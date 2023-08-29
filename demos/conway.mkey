@@ -1,0 +1,218 @@
+let boardParams = {
+    "nrows": 30,
+    "ncols": 45, 
+    "startingCells": [
+        [5, 1], [5, 2], [6, 1], [6, 2], [5, 11], [6, 11], [7, 11], [4, 12], [3, 13], [3, 14], [8, 12], 
+        [9, 13], [9, 14], [6, 15], [4, 16], [5, 17], [6, 17], [7, 17], [6, 18], [8, 16], [3, 21], [4, 21], 
+        [5, 21], [3, 22], [4, 22], [5, 22], [2, 23], [6, 23], [1, 25], [2, 25], [6, 25], [7, 25], [3, 35], 
+        [4, 35], [3, 36], [4, 36]
+    ], 
+};
+
+let boardState = [];
+
+
+let foreach = fn(arr, f) {
+    let n = len(arr);
+    let iter = fn (i) {
+        if (i == n){
+        } else {
+            f(arr[i]);
+            iter(i + 1);
+        }
+    }
+    iter(0);
+}
+
+let displayRow = fn(arr) {
+    foreach(arr, fn(x) {
+        if (x) {
+            printf("X");
+        } else {
+            printf(" ");
+        }
+    })
+}
+
+let displayBoard = fn(board){
+    foreach(board, fn(row) {
+        displayRow(row);
+        printf("\n");
+    })
+}
+
+
+let isIn = fn(elem, array, equal) {
+    let iter = fn(array, idx) {
+        if (len(array) == idx) {
+            return false;
+        } else {
+            if (equal(elem, array[idx])) {
+                return true;
+            } else {
+                iter(array, idx+1);
+            }
+        }
+    }
+    
+    return iter(array, 0);  
+}
+
+let compCoord = fn(ca, cb) {
+    if (ca[0] != cb[0]) {
+        return false;
+    } else {
+        if (ca[1] != cb[1]) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+}
+
+let isStartingCell = fn (coord) { 
+    isIn(coord, boardParams["startingCells"], compCoord)
+}
+
+let createBoardRow = fn(rowId) {
+    let iter = fn (colId, st) {
+        if (colId == boardParams["ncols"]) {
+            return st;
+        } else {
+            let repr = isStartingCell([rowId, colId]);
+            return iter(colId+1, push(st, repr));
+        }
+    }
+    return iter(0, []);
+}
+
+let initBoard = fn() {
+    let iter = fn (rowId, st) {
+        if (rowId == boardParams["nrows"]) {
+            return st;
+        } else {
+            return iter(rowId+1, push(st, createBoardRow(rowId) ) );
+        }
+    }
+    return iter(0, []);
+}
+
+let isAlive = fn (r, c, state) {
+    if (r < 0) {
+        let r = boardParams["nrows"] + r;
+    }
+    if (r > boardParams["nrows"] - 1) {
+        let r = r - boardParams["nrows"];
+    }
+
+    if (c < 0) {
+        let c = boardParams["ncols"] + c;
+    }
+    if (c > boardParams["ncols"] - 1) {
+        let c = c - boardParams["ncols"];
+    }
+
+    return state[r][c];
+}
+
+let map = fn(arr, f) { 
+    let iter = fn(arr, idx, accumulated) { 
+        if (len(arr) == idx) { 
+            accumulated 
+        } else { 
+            iter(arr, idx+1, push(accumulated, f(arr[idx]))); 
+        } 
+    }; 
+
+    iter(arr, 0, []); 
+};
+
+let reduce = fn(arr, initial, f) { 
+    let iter = fn (arr, idx, result) { 
+        if (len(arr) == idx ) { 
+            result 
+        } else { 
+            iter(arr, idx+1, f(result, arr[idx])); 
+        }
+    } 
+    iter(arr, 0, initial); 
+}
+
+let countNeighbors = fn(r, c, state) {
+    let neighbors = [
+        [r-1, c-1],
+        [r-1, c],
+        [r-1, c+1],
+
+        [r, c-1],
+        [r, c+1],
+
+        [r+1, c-1], 
+        [r+1, c],
+        [r+1, c+1]
+    ];
+
+    let alive = map(neighbors, fn(rc) {isAlive(rc[0], rc[1], state)});
+    return reduce(alive, 0, fn(i, x) {i + if(x){1}else{0}});
+}
+
+
+let applyRulesForCell = fn(r, c, state) {
+    let nbCnt = countNeighbors(r, c, state);
+
+    if (isAlive(r, c, state)) {
+        if (nbCnt == 2) {
+            return true;
+        }
+        if (nbCnt == 3) {
+            return true;
+        }
+    } else {
+        if (nbCnt == 3) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+let applyRulesForRow = fn(rowId, state) {
+    let iter = fn(colId, accum) {
+        if (colId == boardParams["ncols"]) {
+            return accum;
+        } else {
+            iter(colId+1, push(accum, applyRulesForCell(rowId, colId, state)));
+        }
+    }
+    return iter(0, []);
+}
+
+let applyRulesForBoard = fn(state) {
+    let iter = fn(rowId, accum) {
+        if (rowId == boardParams["nrows"]) {
+            return accum;
+        } else {
+            iter(rowId+1, push(accum, applyRulesForRow(rowId, state)));
+        }
+    }
+    return iter(0, []);
+}
+
+let clearScreen = fn() {
+    printf("\27[H");
+    printf("\27[2J");
+}
+
+let runItters = fn(iter, max, state) {
+    if (iter < max) {
+        let newState = applyRulesForBoard(state);
+        clearScreen();
+        displayBoard(newState);
+        printf("iter {0}\n", iter);
+
+        runItters(iter+1, max, newState);
+    }
+}
+
+let initalState = initBoard();
+runItters(0, 100, initalState);

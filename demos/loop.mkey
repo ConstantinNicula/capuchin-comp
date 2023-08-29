@@ -1,0 +1,8 @@
+let loop = fn(count, f) {
+    if (count > 0) {
+        f();
+        loop(count-1, f);
+    }
+}
+
+loop(5, fn() {printf("hello\n")});
