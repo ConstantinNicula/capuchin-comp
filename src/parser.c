@@ -52,7 +52,7 @@ static Expression_t* parserParseFunctionLiteral(Parser_t* parser);
 static void parserParseFunctionParameters(Parser_t* parser, FunctionLiteral_t* fl);
 static Expression_t* parserParseCallExpression(Parser_t* parser, Expression_t* function);
 static Expression_t* parserParseArrayLiteral(Parser_t* parser);
-static Vector_t* parserParseExpressionList(Parser_t* parser, TokenType_t end); 
+static VectorExpressions_t* parserParseExpressionList(Parser_t* parser, TokenType_t end); 
 static Expression_t* parserParseIndexExpression(Parser_t*parser, Expression_t* left);
 static Expression_t* parserParseHashLiteral(Parser_t* parser);
 
@@ -434,8 +434,8 @@ static Expression_t* parserParseArrayLiteral(Parser_t* parser) {
     return (Expression_t*)arrayExpr;
 }
 
-static Vector_t* parserParseExpressionList(Parser_t* parser, TokenType_t end) {
-    Vector_t* list = createVector();
+static VectorExpressions_t* parserParseExpressionList(Parser_t* parser, TokenType_t end) {
+    VectorExpressions_t* list = createVectorExpressions();
     if (parserPeekTokenIs(parser, end)){
         parserNextToken(parser);
         return list;
@@ -443,18 +443,18 @@ static Vector_t* parserParseExpressionList(Parser_t* parser, TokenType_t end) {
     parserNextToken(parser);
   
     Expression_t* expr = parserParseExpression(parser, PREC_LOWEST);
-    vectorAppend(list, (void*)expr);
+    vectorExpressionsAppend(list, (void*)expr);
 
     while (parserPeekTokenIs(parser, TOKEN_COMMA))
     {
         parserNextToken(parser);
         parserNextToken(parser);    
         expr = parserParseExpression(parser, PREC_LOWEST);
-        vectorAppend(list, (void*)expr);
+        vectorExpressionsAppend(list, (void*)expr);
     }
 
     if (!parserExpectPeek(parser, end)) {
-        cleanupVector(&list, (VectorElemCleanupFn_t)cleanupExpression);
+        cleanupVectorExpressions(&list, cleanupExpression);
         char* err = strFormat("Expression list missing terminator %s", tokenTypeToStr(end));
         parserAppendError(parser, err);
         return NULL;

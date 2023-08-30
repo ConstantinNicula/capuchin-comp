@@ -5,12 +5,15 @@
 #include "utils.h"
 #include "sbuf.h"
 
+IMPL_VECTOR_TYPE(Statements, Statement_t*);
+IMPL_VECTOR_TYPE(Expressions, Expression_t*);
+
+
 /************************************ 
  *       COMMON UTILS DEF           *
  ************************************/
 
-static void cleanupStatementVec(Vector_t** statements);
-static char* statementVecToString(Vector_t* statements, bool indent);
+static char* statementVecToString(VectorStatements_t* statements, bool indent);
 
 
 /************************************ 
@@ -77,7 +80,7 @@ void cleanupExpression(Expression_t** expr) {
     }
 }
 
-Expression_t* copyExpression(Expression_t* expr) {
+Expression_t* copyExpression(const Expression_t* expr) {
     if (expr && expr->type  >= 0 && expr->type < EXPRESSION_INVALID) {
         ExpressionCopyFn_t copyFn = expressionCopyFns[expr->type];
         return copyFn((void*)expr);
@@ -85,7 +88,7 @@ Expression_t* copyExpression(Expression_t* expr) {
     return NULL;
 }
 
-char* expressionToString(Expression_t* expr) {
+char* expressionToString(const Expression_t* expr) {
     if (expr && expr->type  >= 0 && expr->type < EXPRESSION_INVALID) {
         ExpressionToStringFn_t toStringFn = expressionToStringFns[expr->type];
         return toStringFn(expr);
@@ -93,7 +96,7 @@ char* expressionToString(Expression_t* expr) {
     return cloneString("");
 }
 
-const char* expressionTokenLiteral(Expression_t* expr) {
+const char* expressionTokenLiteral(const Expression_t* expr) {
     if (expr && expr->type  >= 0 && expr->type < EXPRESSION_INVALID) {
         return expr->token->literal; 
     }
@@ -259,7 +262,7 @@ ArrayLiteral_t* createArrayLiteral(const Token_t* tok) {
 
 ArrayLiteral_t* copyArrayLiteral(const ArrayLiteral_t* al) {
     ArrayLiteral_t* newAl = createArrayLiteral(al->token);
-    newAl->elements = copyVector(al->elements, (VectorElemCopyFn_t)copyExpression);
+    newAl->elements = copyVectorExpressions(al->elements, copyExpression);
     return newAl;
 }
 
@@ -267,7 +270,7 @@ void cleanupArrayLiteral(ArrayLiteral_t** al) {
     if (!(*al)) return;
 
     cleanupToken(&(*al)->token);
-    cleanupVector(&(*al)->elements, (VectorElemCleanupFn_t)cleanupExpression);
+    cleanupVectorExpressions(&(*al)->elements, cleanupExpression);
     free(*al);
     *al = NULL;
 }
@@ -290,11 +293,11 @@ char* arrayLiteralToString(const ArrayLiteral_t* al) {
 }
 
 uint32_t arrayLiteralGetElementCount(const ArrayLiteral_t* al) {
-    return vectorGetCount(al->elements);
+    return vectorExpressionsGetCount(al->elements);
 }
 
 Expression_t** arrayLiteralGetElements(const ArrayLiteral_t* al) {
-    return (Expression_t**) vectorGetBuffer(al->elements);
+    return vectorExpressionsGetBuffer(al->elements);
 }
 
 /************************************
@@ -306,8 +309,8 @@ HashLiteral_t *createHashLiteral(const Token_t *tok) {
     *hash = (HashLiteral_t) {
         .type = EXPRESSION_HASH_LITERAL,
         .token = copyToken(tok),
-        .keys = createVector(),
-        .values = createVector()
+        .keys = createVectorExpressions(),
+        .values = createVectorExpressions(),
     };
     return hash;
 }
@@ -317,8 +320,8 @@ HashLiteral_t *copyHashLiteral(const HashLiteral_t *hl) {
     *newHash = (HashLiteral_t) {
         .type = EXPRESSION_HASH_LITERAL,
         .token = copyToken(hl->token),
-        .keys = copyVector(hl->keys, (VectorElemCopyFn_t)copyExpression),
-        .values = copyVector(hl->values, (VectorElemCopyFn_t)copyExpression),
+        .keys = copyVectorExpressions(hl->keys, copyExpression),
+        .values = copyVectorExpressions(hl->values, copyExpression),
     };
     return newHash;
 }
@@ -326,8 +329,8 @@ HashLiteral_t *copyHashLiteral(const HashLiteral_t *hl) {
 void cleanupHashLiteral(HashLiteral_t **hl) {
     if(!(*hl)) return;
     cleanupToken(&(*hl)->token);
-    cleanupVector(&(*hl)->keys, (VectorElemCleanupFn_t)cleanupExpression);
-    cleanupVector(&(*hl)->values, (VectorElemCleanupFn_t)cleanupExpression);
+    cleanupVectorExpressions(&(*hl)->keys, cleanupExpression);
+    cleanupVectorExpressions(&(*hl)->values, cleanupExpression);
     free(*hl);
     *hl = NULL;
 }
@@ -354,7 +357,7 @@ char *hashLiteralToString(const HashLiteral_t *al) {
 }
 
 uint32_t hashLiteralGetPairsCount(const HashLiteral_t *hl) {
-    return vectorGetCount(hl->keys);
+    return vectorExpressionsGetCount(hl->keys);
 }
 
 void hashLiteralGetPair(const HashLiteral_t*hl, uint32_t idx,  Expression_t** key, Expression_t** value) {
@@ -363,13 +366,13 @@ void hashLiteralGetPair(const HashLiteral_t*hl, uint32_t idx,  Expression_t** ke
         return;
     }
 
-    *key = ((Expression_t**)vectorGetBuffer(hl->keys))[idx];
-    *value = ((Expression_t**)vectorGetBuffer(hl->values))[idx];
+    *key = ((Expression_t**)vectorExpressionsGetBuffer(hl->keys))[idx];
+    *value = ((Expression_t**)vectorExpressionsGetBuffer(hl->values))[idx];
 }
 
 void hashLiteralSetPair(HashLiteral_t* hl, Expression_t* key, Expression_t* value) {
-    vectorAppend(hl->keys, key);
-    vectorAppend(hl->values, value);
+    vectorExpressionsAppend(hl->keys, key);
+    vectorExpressionsAppend(hl->values, value);
 }
 
 
@@ -586,7 +589,7 @@ FunctionLiteral_t* createFunctionLiteral(const Token_t* tok) {
     *exp = (FunctionLiteral_t) {
         .type = EXPRESSION_FUNCTION_LITERAL, 
         .token = copyToken(tok),
-        .parameters = createVector(),
+        .parameters = createVectorExpressions(),
         .body = NULL
     };
 
@@ -598,7 +601,7 @@ FunctionLiteral_t* copyFunctionLiteral(const FunctionLiteral_t* exp) {
     *newExp = (FunctionLiteral_t) {
         .type = EXPRESSION_FUNCTION_LITERAL, 
         .token = copyToken(exp->token),
-        .parameters = copyVector(exp->parameters, (VectorElemCopyFn_t)copyExpression),
+        .parameters = copyVectorExpressions(exp->parameters, copyExpression),
         .body = copyBlockStatement(exp->body)
     };
 
@@ -609,7 +612,7 @@ void cleanupFunctionLiteral(FunctionLiteral_t** exp) {
     if (!(*exp)) return;
 
     cleanupToken(&(*exp)->token);
-    cleanupVector(&(*exp)->parameters, (VectorElemCleanupFn_t)cleanupIdentifier);
+    cleanupVectorExpressions(&(*exp)->parameters, cleanupExpression);
     cleanupBlockStatement(&(*exp)->body);
 
     free(*exp);
@@ -636,15 +639,15 @@ char* functionLiteralToString(const FunctionLiteral_t* exp) {
 }
 
 void functionLiteralAppendParameter(FunctionLiteral_t* exp, const Identifier_t* param) {
-    vectorAppend(exp->parameters, (void*)param);
+    vectorExpressionsAppend(exp->parameters, (void*)param);
 }
 
 uint32_t functionLiteralGetParameterCount(const FunctionLiteral_t* exp) {
-    return vectorGetCount(exp->parameters);
+    return vectorExpressionsGetCount(exp->parameters);
 }
 
 Identifier_t** functionLiteralGetParameters(const FunctionLiteral_t* exp) {
-    return (Identifier_t**) vectorGetBuffer(exp->parameters);
+    return (Identifier_t**) vectorExpressionsGetBuffer(exp->parameters);
 }
 
 
@@ -671,7 +674,7 @@ CallExpression_t* copyCallExpression(const CallExpression_t* exp) {
         .type = EXPRESSION_CALL_EXPRESSION, 
         .token =  copyToken(exp->token),
         .function = copyExpression(exp->function),
-        .arguments = copyVector(exp->arguments, (VectorElemCopyFn_t)copyExpression)
+        .arguments = copyVectorExpressions(exp->arguments, copyExpression)
     };
 
     return newExp;
@@ -682,7 +685,7 @@ void cleanupCallExpression(CallExpression_t** exp) {
     
     cleanupToken(&(*exp)->token);
     cleanupExpression(&(*exp)->function);
-    cleanupVector(&(*exp)->arguments,(VectorElemCleanupFn_t) cleanupExpression);
+    cleanupVectorExpressions(&(*exp)->arguments, cleanupExpression);
 
     free(*exp);
     *exp = NULL;
@@ -710,14 +713,14 @@ char* callExpressionToString(const CallExpression_t* exp) {
 
 
 void callExpressionAppendArgument(CallExpression_t* exp, const Expression_t* arg) {
-    vectorAppend(exp->arguments, (void*) arg);
+    vectorExpressionsAppend(exp->arguments, (void*) arg);
 }
 uint32_t callExpresionGetArgumentCount(const CallExpression_t* exp) {
-    return vectorGetCount(exp->arguments);
+    return vectorExpressionsGetCount(exp->arguments);
 }
 
 Expression_t** callExpressionGetArguments(const CallExpression_t* exp) {
-    return (Expression_t**) vectorGetBuffer(exp->arguments);
+    return (Expression_t**) vectorExpressionsGetBuffer(exp->arguments);
 }
 
 
@@ -934,7 +937,7 @@ BlockStatement_t* createBlockStatement(const Token_t* token) {
     *st = (BlockStatement_t) {
         .type = STATEMENT_BLOCK, 
         .token = copyToken(token),
-        .statements = createVector()
+        .statements = createVectorStatements()
     };
 
     return st;
@@ -945,7 +948,7 @@ BlockStatement_t* copyBlockStatement(const BlockStatement_t* st) {
     *newSt = (BlockStatement_t) {
         .type = STATEMENT_BLOCK, 
         .token = copyToken(st->token),
-        .statements = copyVector(st->statements, (VectorElemCopyFn_t)copyStatement)
+        .statements = copyVectorStatements(st->statements, copyStatement)
     };
 
     return newSt;
@@ -955,7 +958,7 @@ void cleanupBlockStatement(BlockStatement_t** st) {
     if (!(*st)) return;
     
     cleanupToken(&(*st)->token);
-    cleanupStatementVec(&(*st)->statements);
+    cleanupVectorStatements(&(*st)->statements, cleanupStatement);
     
     free(*st);
     *st = NULL;
@@ -966,15 +969,15 @@ char* blockStatementToString(const BlockStatement_t* st) {
 }
 
 uint32_t blockStatementGetStatementCount(const BlockStatement_t* st) {
-    return vectorGetCount(st->statements);
+    return vectorStatementsGetCount(st->statements);
 }
 
 Statement_t** blockStatementGetStatements(const BlockStatement_t* st) {
-    return (Statement_t**) vectorGetBuffer(st->statements);
+    return vectorStatementsGetBuffer(st->statements);
 }
 
 void blockStatementAppendStatement(BlockStatement_t* block, const Statement_t* st) {
-    vectorAppend(block->statements, (void*) st);
+    vectorStatementsAppend(block->statements, st);
 }
 
 
@@ -986,21 +989,21 @@ Program_t* createProgram() {
     Program_t* prog = (Program_t*) malloc(sizeof(Program_t));
     if (prog == NULL)
         return NULL;
-    prog->statements = createVector();
+    prog->statements = createVectorStatements();
     return prog;
 }
 
 Statement_t** programGetStatements(const Program_t* prog) {
-    return (Statement_t**)vectorGetBuffer(prog->statements);
+    return (Statement_t**)vectorStatementsGetBuffer(prog->statements);
 }
 
 uint32_t programGetStatementCount(const Program_t* prog) {
-    return vectorGetCount(prog->statements);
+    return vectorStatementsGetCount(prog->statements);
 }
 
 Program_t* copyProgram(const Program_t* prog) {
     Program_t* newProg = createProgram();
-    newProg->statements = copyVector(prog->statements, (VectorElemCopyFn_t)copyStatement);
+    newProg->statements = copyVectorStatements(prog->statements, copyStatement);
     return newProg;
 }
 
@@ -1008,14 +1011,14 @@ void cleanupProgram(Program_t** prog) {
     if (*prog == NULL) 
         return;
 
-    cleanupStatementVec(&(*prog)->statements);
+    cleanupVectorStatements(&(*prog)->statements, cleanupStatement);
     
     free(*prog);
     *prog = NULL;
 }
 
 void programAppendStatement(Program_t* prog, const Statement_t* st) {
-    vectorAppend(prog->statements, (void*) st);
+    vectorStatementsAppend(prog->statements, st);
 }
 
 const char* programTokenLiteral(const Program_t* prog) {
@@ -1037,17 +1040,12 @@ char* programToString(const Program_t* prog) {
  *         COMMON UTILS              *
  ************************************/
 
-static void cleanupStatementVec(Vector_t** statements) {
-    cleanupVector(statements, (VectorElemCleanupFn_t)cleanupStatement);
-    *statements = NULL;
-}
 
-
-static char* statementVecToString(Vector_t* statements, bool indent) {
+static char* statementVecToString(VectorStatements_t* statements, bool indent) {
     Strbuf_t* sbuf = createStrbuf();
     
-    int32_t cnt = vectorGetCount(statements);
-    Statement_t** stmts = (Statement_t**) vectorGetBuffer(statements);
+    int32_t cnt = vectorStatementsGetCount(statements);
+    Statement_t** stmts = vectorStatementsGetBuffer(statements);
 
     for (uint32_t i = 0; i < cnt; i++) {
         if (indent)

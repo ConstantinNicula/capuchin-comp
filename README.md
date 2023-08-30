@@ -1,7 +1,9 @@
 # capuchin-interp
 
 Capuchin is a compiler for the Monkey programming language, written entirely in C. The implementation is based on Thorsten Ball's followup book ['Writing A Compiler In Go'](https://https://compilerbook.com/).
-The lexer and parser implementations have been reused from the interpreter implemenation['capuchin-interp'](https://github.com/ConstantinNicula/capuchin-interp).
+
+The lexer and parser implementations have been reused from ['capuchin-interp'](https://github.com/ConstantinNicula/capuchin-interp).
+
 ### How does  it work?
 TO DO: 
 
@@ -12,4 +14,3 @@ The following make commands are provided:
 - `make clean` 
 - `make test` - run test cases and produce report 
 - `make repl` - build the REPL
-

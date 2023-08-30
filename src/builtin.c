@@ -4,13 +4,13 @@
 #include "utils.h"
 
 
-Object_t* lenBuiltin(Vector_t* args);
-Object_t* firstBuiltin(Vector_t* args);
-Object_t* lastBuiltin(Vector_t* args);
-Object_t* restBuiltin(Vector_t* args);
-Object_t* pushBuiltin(Vector_t* args);
-Object_t* putsBuiltin(Vector_t* args);
-Object_t* printfBuiltin(Vector_t* args);
+Object_t* lenBuiltin(VectorObjects_t* args);
+Object_t* firstBuiltin(VectorObjects_t* args);
+Object_t* lastBuiltin(VectorObjects_t* args);
+Object_t* restBuiltin(VectorObjects_t* args);
+Object_t* pushBuiltin(VectorObjects_t* args);
+Object_t* putsBuiltin(VectorObjects_t* args);
+Object_t* printfBuiltin(VectorObjects_t* args);
 
 
 void registerBuiltinFunctions(Environment_t* env) {
@@ -23,14 +23,14 @@ void registerBuiltinFunctions(Environment_t* env) {
     environmentSet(env, "printf", (Object_t*)createBuiltin(printfBuiltin));    
 }
 
-Object_t* lenBuiltin(Vector_t* args) {
-    if (vectorGetCount(args) != 1) {
+Object_t* lenBuiltin(VectorObjects_t* args) {
+    if (vectorObjectsGetCount(args) != 1) {
         char* err = strFormat("wrong number of arguments. got=%d, want=1", 
-                                vectorGetCount(args));
+                                vectorObjectsGetCount(args));
         return (Object_t*)createError(err); 
     }
     
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+    Object_t** argBuf = vectorObjectsGetBuffer(args);
     switch(argBuf[0]->type) {
         case OBJECT_ARRAY: 
             return (Object_t*)createInteger(arrayGetElementCount((Array_t*)argBuf[0]));
@@ -44,14 +44,14 @@ Object_t* lenBuiltin(Vector_t* args) {
     return (Object_t*)createNull();
 }
 
-Object_t* firstBuiltin(Vector_t* args) {
-    if (vectorGetCount(args) != 1) {
+Object_t* firstBuiltin(VectorObjects_t* args) {
+    if (vectorObjectsGetCount(args) != 1) {
         char* err = strFormat("wrong number of arguments. got=%d, want=1", 
-                                vectorGetCount(args));
+                                vectorObjectsGetCount(args));
         return (Object_t*)createError(err); 
     }
     
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+    Object_t** argBuf = vectorObjectsGetBuffer(args);
     if (argBuf[0]->type != OBJECT_ARRAY) {
         char* err = strFormat("argument to `first` must be ARRAY, got %s", 
                                 objectTypeToString(argBuf[0]->type));
@@ -66,14 +66,14 @@ Object_t* firstBuiltin(Vector_t* args) {
     return (Object_t*) createNull();
 }
 
-Object_t* lastBuiltin(Vector_t* args) {
-    if (vectorGetCount(args) != 1) {
+Object_t* lastBuiltin(VectorObjects_t* args) {
+    if (vectorObjectsGetCount(args) != 1) {
         char* err = strFormat("wrong number of arguments. got=%d, want=1", 
-                                vectorGetCount(args));
+                                vectorObjectsGetCount(args));
         return (Object_t*)createError(err); 
     }
     
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+    Object_t** argBuf = (Object_t**)vectorObjectsGetBuffer(args);
     if (argBuf[0]->type != OBJECT_ARRAY) {
         char* err = strFormat("argument to `last` must be ARRAY, got %s", 
                                 objectTypeToString(argBuf[0]->type));
@@ -90,14 +90,14 @@ Object_t* lastBuiltin(Vector_t* args) {
 }
 
 
-Object_t* restBuiltin(Vector_t* args) {
-    if (vectorGetCount(args) != 1) {
+Object_t* restBuiltin(VectorObjects_t* args) {
+    if (vectorObjectsGetCount(args) != 1) {
         char* err = strFormat("wrong number of arguments. got=%d, want=1", 
-                                vectorGetCount(args));
+                                vectorObjectsGetCount(args));
         return (Object_t*)createError(err); 
     }
     
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+    Object_t** argBuf = vectorObjectsGetBuffer(args);
     if (argBuf[0]->type != OBJECT_ARRAY) {
         char* err = strFormat("argument to `rest` must be ARRAY, got %s", 
                                 objectTypeToString(argBuf[0]->type));
@@ -108,9 +108,9 @@ Object_t* restBuiltin(Vector_t* args) {
     uint32_t len = arrayGetElementCount(arr); 
     Object_t** elems = arrayGetElements(arr);
     if (len > 0) {
-        Vector_t* newElements = createVector();
+        VectorObjects_t* newElements = createVectorObjects();
         for (uint32_t i = 1; i < len; i++) {
-            vectorAppend(newElements, copyObject(elems[i]));
+            vectorObjectsAppend(newElements, copyObject(elems[i]));
         } 
         Array_t* newArr = createArray();
         newArr->elements = newElements;
@@ -120,14 +120,14 @@ Object_t* restBuiltin(Vector_t* args) {
     return (Object_t*) createNull();
 }
 
-Object_t* pushBuiltin(Vector_t* args) {
-    if (vectorGetCount(args) != 2) {
+Object_t* pushBuiltin(VectorObjects_t* args) {
+    if (vectorObjectsGetCount(args) != 2) {
         char* err = strFormat("wrong number of arguments. got=%d, want=2", 
-                                vectorGetCount(args));
+                                vectorObjectsGetCount(args));
         return (Object_t*)createError(err); 
     }
     
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+    Object_t** argBuf = vectorObjectsGetBuffer(args);
     if (argBuf[0]->type != OBJECT_ARRAY) {
         char* err = strFormat("argument to `push` must be ARRAY, got %s", 
                                 objectTypeToString(argBuf[0]->type));
@@ -140,21 +140,21 @@ Object_t* pushBuiltin(Vector_t* args) {
     uint32_t len = arrayGetElementCount(arr); 
     Object_t** elems = arrayGetElements(arr);
     
-    Vector_t* newElements = createVector();
+    VectorObjects_t* newElements = createVectorObjects();
     for (uint32_t i = 0; i < len; i++) {
-        vectorAppend(newElements, copyObject(elems[i]));
+        vectorObjectsAppend(newElements, copyObject(elems[i]));
     } 
     // add new element 
-    vectorAppend(newElements, obj);
+    vectorObjectsAppend(newElements, obj);
     Array_t* newArr = createArray();
     newArr->elements = newElements;
     return (Object_t*)newArr;
 
 }
 
-Object_t* putsBuiltin(Vector_t* args) {
-    uint32_t argCnt = vectorGetCount(args);
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+Object_t* putsBuiltin(VectorObjects_t* args) {
+    uint32_t argCnt = vectorObjectsGetCount(args);
+    Object_t** argBuf = (Object_t**)vectorObjectsGetBuffer(args);
     for(uint32_t i = 0; i < argCnt; i++) {
         char* inspectStr = objectInspect(argBuf[i]);
         puts(inspectStr);
@@ -228,10 +228,10 @@ static char* formatPrint(const char* format, uint32_t argsCount, char**args) {
     return detachStrbuf(&sbuf);
 }
 
-Object_t* printfBuiltin(Vector_t* args) {
+Object_t* printfBuiltin(VectorObjects_t* args) {
     Object_t* retValue = (Object_t*) createNull();
-    uint32_t argCnt = vectorGetCount(args);
-    Object_t** argBuf = (Object_t**)vectorGetBuffer(args);
+    uint32_t argCnt = vectorObjectsGetCount(args);
+    Object_t** argBuf = (Object_t**)vectorObjectsGetBuffer(args);
 
     char* format = objectInspect(argBuf[0]);
     char** argStrBuf = malloc(sizeof(char*) * (argCnt - 1));

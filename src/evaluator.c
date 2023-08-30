@@ -16,9 +16,9 @@ static Object_t* evalInfixExpression(TokenType_t operator, Object_t* left, Objec
 static Object_t* evalIntegerInfixExpression(TokenType_t operator, Integer_t* left, Integer_t* right);
 static Object_t* evalStringInfixExpression(TokenType_t operator, String_t* left, String_t* right);
 
-static Vector_t* evalExpressions(Vector_t* exprs, Environment_t* env);
-static Object_t* applyFunction(Object_t* function, Vector_t* args);
-static Environment_t* extendFunctionEnv(Function_t* function, Vector_t* args);
+static VectorObjects_t* evalExpressions(VectorExpressions_t* exprs, Environment_t* env);
+static Object_t* applyFunction(Object_t* function, VectorObjects_t* args);
+static Environment_t* extendFunctionEnv(Function_t* function, VectorObjects_t* args);
 static Object_t* unwrapReturnValue(Object_t* obj);
 
 static Object_t* evalIndexExpression(Object_t* left, Object_t* index);
@@ -166,30 +166,30 @@ static Object_t* evalExpression(Expression_t* expr, Environment_t* env) {
                 return function;
             }
 
-            Vector_t* args = evalExpressions(callExpr->arguments, env);
-            uint32_t argsCnt = vectorGetCount(args);
-            Object_t** argsBuf = (Object_t**)vectorGetBuffer(args);
+            VectorObjects_t* args = evalExpressions(callExpr->arguments, env);
+            uint32_t argsCnt = vectorObjectsGetCount(args);
+            Object_t** argsBuf = vectorObjectsGetBuffer(args);
             
             if ( argsCnt == 1 && isError(argsBuf[0])) {
                 Error_t* err = (Error_t*)argsBuf[0];
-                cleanupVector(&args, NULL);
+                cleanupVectorObjects(&args, NULL);
                 return (Object_t*)err;
             }
             Object_t* result = applyFunction(function, args);
-            cleanupVector(&args, NULL);
+            cleanupVectorObjects(&args, NULL);
             return result;
         }
 
         case EXPRESSION_ARRAY_LITERAL: {
             ArrayLiteral_t* arrLit = (ArrayLiteral_t*) expr;
 
-            Vector_t* elems = evalExpressions(arrLit->elements, env);
-            uint32_t elemsCnt = vectorGetCount(elems);
-            Object_t** elemsBuf = (Object_t**)vectorGetBuffer(elems);
+            VectorObjects_t* elems = evalExpressions(arrLit->elements, env);
+            uint32_t elemsCnt = vectorObjectsGetCount(elems);
+            Object_t** elemsBuf = vectorObjectsGetBuffer(elems);
             
             if ( elemsCnt == 1 && isError(elemsBuf[0])) {
                 Error_t* err = (Error_t*)elemsBuf[0];
-                cleanupVector(&elems, NULL);
+                cleanupVectorObjects(&elems, NULL);
                 return (Object_t*)err;
             }
 
@@ -224,33 +224,32 @@ static Object_t* evalExpression(Expression_t* expr, Environment_t* env) {
     }
 }
 
-static Vector_t* evalExpressions(Vector_t* exprs, Environment_t* env) {
-    Vector_t* result = createVector();
+static VectorObjects_t* evalExpressions(VectorExpressions_t* exprs, Environment_t* env) {
+    VectorObjects_t* result = createVectorObjects();
     
-    uint32_t exprCnt = vectorGetCount(exprs);
-    Expression_t** exprBuf = (Expression_t**)vectorGetBuffer(exprs);
+    uint32_t exprCnt = vectorExpressionsGetCount(exprs);
+    Expression_t** exprBuf = vectorExpressionsGetBuffer(exprs);
 
     for (int i = 0; i < exprCnt; i++) {
         Object_t* evaluated = evalExpression(exprBuf[i], env);
         if (isError(evaluated)){
-            cleanupVectorContents(result, NULL);
-            vectorAppend(result, evaluated);
+            cleanupVectorObjectsContents(result, NULL);
+            vectorObjectsAppend(result, evaluated);
             return result;
         }
-
-        vectorAppend(result, evaluated);
+        vectorObjectsAppend(result, evaluated);
     }
 
     return result;
 }
 
-static Object_t* applyFunction(Object_t* function, Vector_t* args) {
+static Object_t* applyFunction(Object_t* function, VectorObjects_t* args) {
     switch(function->type) {
         case OBJECT_FUNCTION: 
             Environment_t* extendedEnv = extendFunctionEnv((Function_t*)function, args); 
             if (!extendedEnv) {
                 char* message = strFormat("Invalid parameter count: expected(%d) received (%d)", 
-                                            functionGetParameterCount((Function_t*)function), vectorGetCount(args));
+                                            functionGetParameterCount((Function_t*)function), vectorObjectsGetCount(args));
                 return (Object_t*) createError(message);
             }
             Object_t* evaluated = evalBlockStatement(((Function_t*)function)->body, extendedEnv);
@@ -263,17 +262,17 @@ static Object_t* applyFunction(Object_t* function, Vector_t* args) {
     }
 }
 
-static Environment_t* extendFunctionEnv(Function_t* function, Vector_t* args) {
+static Environment_t* extendFunctionEnv(Function_t* function, VectorObjects_t* args) {
     Environment_t* env = createEnvironment(function->environment);
 
-    uint32_t argsCnt = vectorGetCount(args);
+    uint32_t argsCnt = vectorObjectsGetCount(args);
     uint32_t paramsCnt = functionGetParameterCount(function);
 
     if (argsCnt != paramsCnt) {
         return NULL;
     }
 
-    Object_t** argsBuf = (Object_t**)vectorGetBuffer(args);
+    Object_t** argsBuf = vectorObjectsGetBuffer(args);
     Identifier_t** paramBuf = functionGetParameters(function);
     for (uint32_t i = 0; i < argsCnt; i++) {
         environmentSet(env, paramBuf[i]->value, argsBuf[i]);

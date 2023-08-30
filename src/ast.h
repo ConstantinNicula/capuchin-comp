@@ -6,6 +6,13 @@
 #include "token.h"
 #include "vector.h"
 
+typedef struct Expression Expression_t;
+typedef struct Statement Statement_t;
+
+// Instantiate specific vector classes for these two cases
+DEFINE_VECTOR_TYPE(Statements, Statement_t*);
+DEFINE_VECTOR_TYPE(Expressions, Expression_t*);
+
 /************************************
  *     GENERIC EXPRESSION NODE      *
  ************************************/
@@ -33,11 +40,11 @@ typedef struct Expression
     Token_t *token;
 } Expression_t;
 
-Expression_t *copyExpression(Expression_t *expr);
+Expression_t *copyExpression(const Expression_t *expr);
 void cleanupExpression(Expression_t **expr);
 
-char *expressionToString(Expression_t *expr);
-const char *expressionTokenLiteral(Expression_t *expr);
+char *expressionToString(const Expression_t *expr);
+const char *expressionTokenLiteral(const Expression_t *expr);
 
 // function pointers for cleanup / expresion to string
 typedef void (*ExpressionCleanupFn_t)(void **);
@@ -120,7 +127,7 @@ typedef struct ArrayLiteral
 {
     ExpressionType_t type;
     Token_t *token;
-    Vector_t *elements;
+    VectorExpressions_t *elements;
 } ArrayLiteral_t;
 
 ArrayLiteral_t *createArrayLiteral(const Token_t *tok);
@@ -139,8 +146,8 @@ typedef struct HashLiteral
 {
     ExpressionType_t type;
     Token_t *token;
-    Vector_t* keys;
-    Vector_t* values;
+    VectorExpressions_t* keys;
+    VectorExpressions_t* values;
 } HashLiteral_t;
 
 HashLiteral_t *createHashLiteral(const Token_t *tok);
@@ -236,7 +243,7 @@ typedef struct FunctionLiteral
 {
     ExpressionType_t type;
     Token_t *token;
-    Vector_t *parameters;
+    VectorExpressions_t *parameters;
     BlockStatement_t *body;
 } FunctionLiteral_t;
 
@@ -258,7 +265,7 @@ typedef struct CallExpression
     ExpressionType_t type;
     Token_t *token;
     Expression_t *function;
-    Vector_t *arguments;
+    VectorExpressions_t *arguments;
 } CallExpression_t;
 
 CallExpression_t *createCallExpression(const Token_t *tok);
@@ -360,7 +367,7 @@ typedef struct BlockStatement
 {
     StatementType_t type;
     Token_t *token;
-    Vector_t *statements;
+    VectorStatements_t *statements;
 } BlockStatement_t;
 
 BlockStatement_t *createBlockStatement(const Token_t *token);
@@ -378,7 +385,7 @@ void blockStatementAppendStatement(BlockStatement_t *block, const Statement_t *s
 
 typedef struct Program
 {
-    Vector_t *statements;
+    VectorStatements_t *statements;
 } Program_t;
 
 Program_t *createProgram();

@@ -6,6 +6,7 @@
 #include "sbuf.h"
 #include "gc.h"
 
+IMPL_VECTOR_TYPE(Objects, Object_t*);
 
 const char* tokenTypeStrings[_OBJECT_TYPE_CNT] = {
     [OBJECT_INTEGER]="INTEGER",
@@ -59,7 +60,7 @@ static ObjectCopyFn_t objectCopyFns[_OBJECT_TYPE_CNT] = {
 };
 
 
-Object_t* copyObject(Object_t* obj) {
+Object_t* copyObject(const Object_t* obj) {
     if (obj && 0 <= obj->type && obj->type < _OBJECT_TYPE_CNT) {
         ObjectCopyFn_t copyFn = objectCopyFns[obj->type];
         if (!copyFn) return (Object_t*)createNull();
@@ -69,7 +70,7 @@ Object_t* copyObject(Object_t* obj) {
 }
 
 
-char* objectInspect(Object_t* obj) {
+char* objectInspect(const Object_t* obj) {
     if (obj && 0 <= obj->type && obj->type < _OBJECT_TYPE_CNT) {
         ObjectInspectFn_t inspectFn = objectInsepctFns[obj->type];
         if (!inspectFn) return cloneString(""); 
@@ -79,11 +80,11 @@ char* objectInspect(Object_t* obj) {
 }
 
 
-ObjectType_t objectGetType(Object_t* obj) {
+ObjectType_t objectGetType(const Object_t* obj) {
     return obj->type;
 }
 
-bool objectIsHashable(Object_t* obj) {
+bool objectIsHashable(const Object_t* obj) {
     switch(obj->type) {
         case OBJECT_BOOLEAN:
         case OBJECT_STRING:
@@ -94,7 +95,7 @@ bool objectIsHashable(Object_t* obj) {
     }
 }
 
-char* objectGetHashKey(Object_t* obj) {
+char* objectGetHashKey(const Object_t* obj) {
    return objectIsHashable(obj) ? objectInspect(obj) : NULL;
 }
 
@@ -117,7 +118,7 @@ Integer_t* createInteger(int64_t value) {
     return obj;
 }
 
-Integer_t* copyInteger(Integer_t* obj) {
+Integer_t* copyInteger(const Integer_t* obj) {
     return createInteger(obj->value);
 }
 
@@ -149,7 +150,7 @@ Boolean_t* createBoolean(bool value) {
     return ret;
 }
 
-Boolean_t* copyBoolean(Boolean_t* obj) {
+Boolean_t* copyBoolean(const Boolean_t* obj) {
     return createBoolean(obj->value);
 }
 
@@ -181,7 +182,7 @@ String_t* createString(const char* value) {
     return ret;
 }
 
-String_t* copyString(String_t* obj) {
+String_t* copyString(const String_t* obj) {
     return createString(obj->value);
 }
 
@@ -208,7 +209,7 @@ Null_t* createNull() {
     return ret;
 }
 
-Null_t* copyNull(Null_t* obj) {
+Null_t* copyNull(const Null_t* obj) {
     return createNull();
 }
 
@@ -240,7 +241,7 @@ ReturnValue_t* createReturnValue(Object_t* value) {
     return ret;
 }
 
-ReturnValue_t* copyReturnValue(ReturnValue_t* obj) {
+ReturnValue_t* copyReturnValue(const ReturnValue_t* obj) {
     return createReturnValue(obj->value);
 }
 
@@ -277,7 +278,7 @@ Error_t* createError(char* message) {
     return err;
 }
 
-Error_t* copyError(Error_t* obj) {
+Error_t* copyError(const Error_t* obj) {
     return createError(cloneString(obj->message));
 }
 
@@ -302,11 +303,11 @@ void gcMarkError(Error_t* err) {
  *    FUNCTION OBJECT TYPE          *
  ************************************/
 
-Function_t* createFunction(Vector_t* params, BlockStatement_t* body, Environment_t* env) {
+Function_t* createFunction(VectorExpressions_t* params, BlockStatement_t* body, Environment_t* env) {
     Function_t* func = gcMalloc(sizeof(Function_t), GC_DATA_OBJECT);
     *func = (Function_t) {
         .type = OBJECT_FUNCTION,
-        .parameters = copyVector(params, (VectorElemCopyFn_t) copyExpression),
+        .parameters = copyVectorExpressions(params, copyExpression),
         .body = copyBlockStatement(body),
         .environment = env, // weak copy to env
     };
@@ -319,7 +320,7 @@ void gcCleanupFunction(Function_t** obj) {
         return;
 
     // full clean because these are owned by object & not by GC 
-    cleanupVector(&(*obj)->parameters, (VectorElemCleanupFn_t)cleanupExpression);
+    cleanupVectorExpressions(&(*obj)->parameters, cleanupExpression);
     cleanupBlockStatement(&(*obj)->body);
     
     gcFree(*obj);
@@ -335,7 +336,7 @@ void gcMarkFunction(Function_t* obj) {
     }
 }
 
-Function_t* copyFunction(Function_t* obj) {
+Function_t* copyFunction(const Function_t* obj) {
     return createFunction(obj->parameters, obj->body, obj->environment);
 }
 
@@ -343,8 +344,8 @@ char* functionInspect(Function_t* obj) {
     Strbuf_t* sbuf = createStrbuf();
     strbufWrite(sbuf, "fn(");
     
-    uint32_t cnt = vectorGetCount(obj->parameters);
-    Identifier_t** params = (Identifier_t**)vectorGetBuffer(obj->parameters);
+    uint32_t cnt = vectorExpressionsGetCount(obj->parameters);
+    Identifier_t** params = (Identifier_t**) vectorExpressionsGetBuffer(obj->parameters);
     for (uint32_t i = 0; i < cnt; i++) {
         strbufConsume(sbuf, identifierToString(params[i]));
         if (i !=  (cnt - 1))
@@ -359,11 +360,11 @@ char* functionInspect(Function_t* obj) {
 }
 
 uint32_t functionGetParameterCount(Function_t* obj) {
-    return vectorGetCount(obj->parameters);
+    return vectorExpressionsGetCount(obj->parameters);
 }
 
 Identifier_t** functionGetParameters(Function_t* obj) {
-    return (Identifier_t**)vectorGetBuffer(obj->parameters);
+    return (Identifier_t**)vectorExpressionsGetBuffer(obj->parameters);
 }
 
 /************************************ 
@@ -379,9 +380,9 @@ Array_t* createArray() {
     return arr;
 }
 
-Array_t* copyArray(Array_t* obj) {
+Array_t* copyArray(const Array_t* obj) {
     Array_t* newArr = createArray();
-    newArr->elements = copyVector(obj->elements, (VectorElemCopyFn_t)copyObject);
+    newArr->elements = copyVectorObjects(obj->elements, copyObject);
     return newArr;
 }
 
@@ -402,20 +403,20 @@ char* arrayInspect(Array_t* obj) {
 }
 
 uint32_t arrayGetElementCount(Array_t* obj) {
-    return vectorGetCount(obj->elements);
+    return vectorObjectsGetCount(obj->elements);
 }
 
 Object_t** arrayGetElements(Array_t* obj) {
-    return (Object_t**) vectorGetBuffer(obj->elements);
+    return vectorObjectsGetBuffer(obj->elements);
 }
 
 void arrayAppend(Array_t* arr, Object_t* obj) {
-    vectorAppend(arr->elements, (void*) obj);
+    vectorObjectsAppend(arr->elements, (void*) obj);
 }
 
 void gcCleanupArray(Array_t** arr) {
     if (!(*arr)) return;
-    cleanupVector(&(*arr)->elements, NULL);
+    cleanupVectorObjects(&(*arr)->elements, NULL);
     gcFree(*arr);
     *arr = NULL;
 }
@@ -459,7 +460,7 @@ Hash_t* createHash() {
     return hash;
 }
 
-Hash_t* copyHash(Hash_t* obj) {
+Hash_t* copyHash(const Hash_t* obj) {
     Hash_t* newHash = gcMalloc(sizeof(Hash_t), GC_DATA_OBJECT);
     *newHash = (Hash_t) {
         .type = OBJECT_HASH,
@@ -540,7 +541,7 @@ Builtin_t* createBuiltin(BuiltinFunction_t func) {
     return builtin;
 }
 
-Builtin_t* copyBuiltin(Builtin_t* obj) {
+Builtin_t* copyBuiltin(const Builtin_t* obj) {
     return createBuiltin(obj->func);
 }
 

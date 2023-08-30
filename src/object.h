@@ -7,6 +7,11 @@
 #include "ast.h"
 #include "env.h"
 
+typedef struct Object Object_t; 
+DEFINE_VECTOR_TYPE(Objects, Object_t*);
+
+
+
 typedef enum ObjectType{
     OBJECT_INTEGER,
     OBJECT_BOOLEAN, 
@@ -34,15 +39,15 @@ typedef struct Object {
     OBJECT_BASE_ATTRS;
 } Object_t;
 
-typedef char* (*ObjectInspectFn_t) (void*);
-typedef void* (*ObjectCopyFn_t) (void*);
+typedef char* (*ObjectInspectFn_t) (const void*);
+typedef void* (*ObjectCopyFn_t) (const void*);
 
-Object_t* copyObject(Object_t* obj);
+Object_t* copyObject(const Object_t* obj);
 
-char* objectInspect(Object_t* obj);
-ObjectType_t objectGetType(Object_t* obj);
-char* objectGetHashKey(Object_t* obj);
-bool objectIsHashable(Object_t* obj); 
+char* objectInspect(const Object_t* obj);
+ObjectType_t objectGetType(const Object_t* obj);
+char* objectGetHashKey(const Object_t* obj);
+bool objectIsHashable(const Object_t* obj); 
 
 /************************************ 
  *     INTEGER OBJECT TYPE          *
@@ -54,7 +59,7 @@ typedef struct Integer {
 }Integer_t;
 
 Integer_t* createInteger(int64_t value);
-Integer_t* copyInteger(Integer_t* obj);
+Integer_t* copyInteger(const Integer_t* obj);
 
 char* integerInspect(Integer_t* obj);
 
@@ -69,7 +74,7 @@ typedef struct Boolean {
 }Boolean_t;
 
 Boolean_t* createBoolean(bool value);
-Boolean_t* copyBoolean(Boolean_t* obj);
+Boolean_t* copyBoolean(const Boolean_t* obj);
 
 char* booleanInspect(Boolean_t* obj);
 
@@ -83,7 +88,7 @@ typedef struct String {
 }String_t;
 
 String_t* createString(const char* value);
-String_t* copyString(String_t* obj);
+String_t* copyString(const String_t* obj);
 
 char* stringInspect(String_t* obj);
 
@@ -97,7 +102,7 @@ typedef struct Null {
 }Null_t;
 
 Null_t* createNull();
-Null_t* copyNull(Null_t* obj);
+Null_t* copyNull(const Null_t* obj);
 
 char* nulllInspect(Null_t* obj);
 
@@ -112,7 +117,7 @@ typedef struct ReturnValue {
 }ReturnValue_t;
 
 ReturnValue_t* createReturnValue(Object_t*);
-ReturnValue_t* copyReturnValue(ReturnValue_t* obj);
+ReturnValue_t* copyReturnValue(const ReturnValue_t* obj);
 
 char* returnValueInspect(ReturnValue_t* obj);
 
@@ -127,7 +132,7 @@ typedef struct Error {
 }Error_t;
 
 Error_t* createError(char* message);
-Error_t* copyError(Error_t* obj);
+Error_t* copyError(const Error_t* obj);
 
 char* errorInspect(Error_t* obj);
 
@@ -138,13 +143,13 @@ typedef struct Environment Environment_t;
 
 typedef struct Function {
     OBJECT_BASE_ATTRS;
-    Vector_t* parameters;
+    VectorExpressions_t* parameters;
     BlockStatement_t* body;
     Environment_t* environment;
 } Function_t;
 
-Function_t* createFunction(Vector_t* params, BlockStatement_t* body, Environment_t* env);
-Function_t* copyFunction(Function_t* obj);
+Function_t* createFunction(VectorExpressions_t* params, BlockStatement_t* body, Environment_t* env);
+Function_t* copyFunction(const Function_t* obj);
 
 char* functionInspect(Function_t* obj);
 uint32_t functionGetParameterCount(Function_t* obj);
@@ -156,11 +161,11 @@ Identifier_t** functionGetParameters(Function_t* obj);
 
 typedef struct Array {
     OBJECT_BASE_ATTRS;
-    Vector_t* elements;
+    VectorObjects_t* elements;
 }Array_t;
 
 Array_t* createArray();
-Array_t* copyArray(Array_t* obj);
+Array_t* copyArray(const Array_t* obj);
 
 char* arrayInspect(Array_t* obj);
 uint32_t arrayGetElementCount(Array_t* obj);
@@ -184,7 +189,7 @@ typedef struct Hash {
 } Hash_t;
 
 Hash_t* createHash();
-Hash_t* copyHash(Hash_t* obj);
+Hash_t* copyHash(const Hash_t* obj);
 
 char* hashInspect(Hash_t* obj);
 void hashInsertPair(Hash_t* obj, HashPair_t* pair);
@@ -195,7 +200,7 @@ HashPair_t* hashGetPair(Hash_t* obj, Object_t* key);
  *     BULITIN OBJECT TYPE          *
  ************************************/
 
-typedef Object_t* (*BuiltinFunction_t) (Vector_t*);
+typedef Object_t* (*BuiltinFunction_t) (VectorObjects_t*);
 
 typedef struct Builtin {
     OBJECT_BASE_ATTRS;
@@ -203,7 +208,7 @@ typedef struct Builtin {
 } Builtin_t;
 
 Builtin_t* createBuiltin(BuiltinFunction_t func);
-Builtin_t* copyBuiltin(Builtin_t* obj);
+Builtin_t* copyBuiltin(const Builtin_t* obj);
 
 char* builtinInspect(Builtin_t* obj);
 
