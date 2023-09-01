@@ -4,6 +4,7 @@
 
 /* Implement definitions */
 IMPL_SLICE_TYPE(Byte, uint8_t);
+IMPL_SLICE_TYPE(Int, int);
 
 size_t* slicePtrGetHeader(void* ptr) {
     return (size_t*)(((char*) ptr) - sizeof(size_t));

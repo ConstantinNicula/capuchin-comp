@@ -20,12 +20,13 @@ typedef struct OpDefinition {
 } OpDefinition_t;
 
 
-/* */
+/* Container for bytecode */
 typedef SliceByte_t Instructions_t; 
 
 
+/* External API */
+
 const OpDefinition_t*  opLookup(OpCode_t op);
-
-
-
+SliceByte_t codeMake(OpCode_t op, int* operands);
+SliceByte_t codeMakeV(OpCode_t op, ...);
 #endif

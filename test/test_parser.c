@@ -4,27 +4,7 @@
 #include "parser.h"
 #include "ast.h"
 #include "utils.h"
-
-
-typedef enum {
-    EXPECT_INTEGER,
-    EXPECT_BOOL, 
-    EXPECT_STRING,
-} ExpectType_t;
-
-typedef struct GenericExpect {
-    ExpectType_t type;
-    union {
-        char* sl;
-        int64_t il;
-        bool bl; 
-    };
-} GenericExpect_t;
-
-#define _BOOL(x) (GenericExpect_t){.type=EXPECT_BOOL, .bl=(x)}
-#define _INT(x) (GenericExpect_t){.type=EXPECT_INTEGER, .il=(x)}
-#define _STRING(x) (GenericExpect_t){.type=EXPECT_STRING, .sl=(x)}
-
+#include "test_helper.h"
 
 void testLetStatement(Statement_t* s, const char* name);
 void testLiteralExpression(Expression_t* expression, GenericExpect_t exp);
@@ -794,7 +774,9 @@ void testLiteralExpression(Expression_t* expression, GenericExpect_t exp) {
             break;
         case EXPECT_BOOL:
             testBooleanLiteral(expression, exp.bl);
-            break;        
+            break; 
+        case EXPECT_NULL:
+            TEST_ABORT();       
     }
 }
 

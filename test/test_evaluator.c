@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "utils.h"
 #include "gc.h"
+#include "test_helper.h"
 
 void setUp(void) {
     // set stuff up here
@@ -15,26 +16,6 @@ void tearDown(void) {
     // clean stuff up here
 }
 
-typedef enum {
-    EXPECT_INTEGER,
-    EXPECT_BOOL, 
-    EXPECT_STRING,
-    EXPECT_NULL
-} ExpectType_t;
-
-typedef struct GenericExpect {
-    ExpectType_t type;
-    union {
-        int64_t il;
-        bool bl;
-        const char* sl;
-    };
-}GenericExpect_t;
-
-#define _BOOL(x) (GenericExpect_t){.type=EXPECT_BOOL, .bl=(x)}
-#define _INT(x) (GenericExpect_t){.type=EXPECT_INTEGER, .il=(x)}
-#define _STRING(x) (GenericExpect_t){.type=EXPECT_STRING, .sl=(x)}
-#define _NIL (GenericExpect_t){.type=EXPECT_NULL}
 
 Object_t* testEval(const char* input);
 void testIntegerObject(Object_t* obj, int64_t expected);

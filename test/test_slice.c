@@ -15,13 +15,13 @@ void sliceTestBasic() {
     instructions[1] = 13;
     instructions[2] = 14;
     instructions[3] = 15;
-    cleanupSliceByte(&instructions);
+    cleanupSliceByte(instructions);
 }
 
 void sliceTestGetLen() {
     SliceByte_t temp = createSliceByte(100);
     TEST_ASSERT_EQUAL_size_t(100, sliceByteGetLen(temp));
-    cleanupSliceByte(&temp);
+    cleanupSliceByte(temp);
 }
 
 void sliceTestAppend() {
@@ -41,8 +41,8 @@ void sliceTestAppend() {
     for (int i = 0; i < 20 ; i ++) {
         TEST_ASSERT_EQUAL_UINT8(i, sa[i]);
     }
-    cleanupSliceByte(&sa);
-    cleanupSliceByte(&sb);
+    cleanupSliceByte(sa);
+    cleanupSliceByte(sb);
 }
 
 // not needed when using generate_test_runner.rb
