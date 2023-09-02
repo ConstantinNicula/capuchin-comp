@@ -1,6 +1,12 @@
-#include "code.h"
 #include <stddef.h>
 #include <stdarg.h>
+#include <assert.h>
+#include "sbuf.h"
+#include "code.h"
+#include "utils.h"
+
+
+static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands);
 
 static OpDefinition_t definitions[_OP_COUNT] = {
     {"OpConstant", .argCount=1, .argWidths={2}},
@@ -63,11 +69,76 @@ SliceByte_t codeMake(OpCode_t op, int* operands) {
                 instruction[offset] = operands[i];
                 break;
             default:
-                // nothing 
+                assert(0 && "Unreachable"); 
                 break;
         }
         offset += width;
     }
 
     return instruction;
+}
+
+SliceInt_t codeReadOperands(const OpDefinition_t* def, Instructions_t ins, uint8_t* bytesRead) {
+    SliceInt_t operands = createSliceInt(def->argCount);
+    uint8_t offset = 0;
+
+    for (uint8_t i = 0; i < def->argCount; i++) {
+        uint8_t width = def->argWidths[i];
+        switch(width) {
+            case 2: 
+                operands[i] = (ins[offset] << 8) | ins[offset+1];
+                break;
+            case 1: 
+                operands[i] = ins[offset];
+                break;
+            default: 
+                assert(0 && "Unreachable");
+                break;
+        }
+        offset += width;
+    }
+    *bytesRead = offset;
+    return operands;
+}
+
+
+char* instructionsToString(Instructions_t ins) {
+    Strbuf_t* sbuf = createStrbuf(); 
+    uint32_t insLen = sliceByteGetLen(ins); 
+    uint32_t i = 0; 
+    
+    while (i < insLen) {
+        const OpDefinition_t* def = opLookup(ins[i]);
+        if (!def) {
+            strbufConsume(sbuf, 
+                strFormat("ERROR: opcode %d undefined\n", ins[i]));
+            break;
+        }
+
+        uint8_t bytesRead = 0;
+        SliceInt_t operands = codeReadOperands(def, &ins[i+1], &bytesRead);
+        char *operandsStr = fmtInstruction(def, operands);
+        strbufConsume(sbuf, strFormat("%04d %s\n", i, operandsStr));
+    
+        cleanupSliceInt(operands);
+        free(operandsStr);
+        i += 1 + bytesRead;
+    }
+
+    return detachStrbuf(&sbuf);
+}
+
+
+static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands) {
+    if (def->argCount != sliceIntGetLen(operands)) {
+        return strFormat("ERROR: operand len %d does not match defined %d\n",
+            sliceIntGetLen(operands), def->argCount);
+    }
+
+    switch (def->argCount) {
+        case 1: 
+            return strFormat("%s %d", def->name, operands[0]);
+    }
+
+    return strFormat("ERROR: unhandled operandCount for %s\n", def->name);
 }

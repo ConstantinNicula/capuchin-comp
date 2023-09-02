@@ -22,11 +22,12 @@ typedef struct OpDefinition {
 
 /* Container for bytecode */
 typedef SliceByte_t Instructions_t; 
-
+char* instructionsToString(Instructions_t ins); 
 
 /* External API */
 
 const OpDefinition_t*  opLookup(OpCode_t op);
 SliceByte_t codeMake(OpCode_t op, int* operands);
 SliceByte_t codeMakeV(OpCode_t op, ...);
+SliceInt_t codeReadOperands(const OpDefinition_t*def, Instructions_t ins, uint8_t* bytesRead);
 #endif

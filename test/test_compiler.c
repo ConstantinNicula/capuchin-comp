@@ -76,9 +76,8 @@ void runCompilerTests(TestCase_t* tc, int numTc) {
         cleanupInstructions(tc[i].expInstructions, tc[i].numExpInstructions);
 
         cleanupCompiler(&compiler);
-        cleanupProgram(&program);
         cleanupParser(&parser);
-        cleanupLexer(&lexer); 
+        cleanupProgram(&program);
     }
 }
 

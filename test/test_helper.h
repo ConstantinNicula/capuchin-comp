@@ -29,6 +29,10 @@ typedef struct GenericExpect {
 #define TEST_BYTES(expected, actual, numElements, message) \
     TEST_ASSERT_EQUAL_UINT8_ARRAY_MESSAGE(expected, actual, numElements, message)
 
+#define TEST_NOT_NULL(ptr, message) \
+    TEST_ASSERT_NOT_NULL_MESSAGE(ptr, message)
 
+#define TEST_STRING(exp, actual, message) \
+    TEST_ASSERT_EQUAL_STRING_MESSAGE(exp, actual, message)
 
 #endif
