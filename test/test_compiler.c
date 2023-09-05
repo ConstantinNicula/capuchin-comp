@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "test_helper.h"
+#include "gc.h"
 
 void setUp(void) {
     // set stuff up here
@@ -40,10 +41,11 @@ void testCompilerBasic() {
             .input = "1 + 2",
             .numExpConstants = 2,
             .expConstants = {_INT(1), _INT(2)},
-            .numExpInstructions = 2,
+            .numExpInstructions = 3,
             .expInstructions = {
                 codeMakeV(OP_CONSTANT, 0),
                 codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_ADD),
             }
         }
     };
@@ -78,13 +80,15 @@ void runCompilerTests(TestCase_t* tc, int numTc) {
         cleanupCompiler(&compiler);
         cleanupParser(&parser);
         cleanupProgram(&program);
+        gcForceRun(&program);
     }
 }
 
 void testInstructions(SliceByte_t expected[], int numExpected, SliceByte_t actual) {
     SliceByte_t concatted = concatInstructions(expected, numExpected); 
-    TEST_INT(sliceByteGetLen(concatted), sliceByteGetLen(actual), "Wrong instructions length");
-    TEST_BYTES(concatted, actual, sliceByteGetLen(concatted), "Wrong instruction"); 
+    //TEST_INT(sliceByteGetLen(concatted), sliceByteGetLen(actual), "Wrong instructions length");
+    //TEST_BYTES(concatted, actual, sliceByteGetLen(concatted), "Wrong instruction"); 
+    TEST_STRING(instructionsToString(concatted), instructionsToString(actual), "Wrong instruction"); 
     cleanupSliceByte(concatted);
 }
 

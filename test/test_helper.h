@@ -1,6 +1,7 @@
 #ifndef _TEST_HELPER_H_
 #define _TEST_HELPER_H_
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum {
     EXPECT_INTEGER,

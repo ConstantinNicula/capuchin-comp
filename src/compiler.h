@@ -15,6 +15,7 @@ typedef struct Compiler {
 
 typedef enum CompError {
     COMP_NO_ERROR = 0,
+    COMP_UNKNOWN_OPERATOR, 
 } CompError_t;
 
 typedef struct Bytecode {

@@ -10,6 +10,7 @@ static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands);
 
 static OpDefinition_t definitions[_OP_COUNT] = {
     {"OpConstant", .argCount=1, .argWidths={2}},
+    {"OpAdd", .argCount=0, .argWidths={0}},
 };
 
 
@@ -78,29 +79,6 @@ SliceByte_t codeMake(OpCode_t op, int* operands) {
     return instruction;
 }
 
-SliceInt_t codeReadOperands(const OpDefinition_t* def, Instructions_t ins, uint8_t* bytesRead) {
-    SliceInt_t operands = createSliceInt(def->argCount);
-    uint8_t offset = 0;
-
-    for (uint8_t i = 0; i < def->argCount; i++) {
-        uint8_t width = def->argWidths[i];
-        switch(width) {
-            case 2: 
-                operands[i] = (ins[offset] << 8) | ins[offset+1];
-                break;
-            case 1: 
-                operands[i] = ins[offset];
-                break;
-            default: 
-                assert(0 && "Unreachable");
-                break;
-        }
-        offset += width;
-    }
-    *bytesRead = offset;
-    return operands;
-}
-
 
 char* instructionsToString(Instructions_t ins) {
     Strbuf_t* sbuf = createStrbuf(); 
@@ -128,6 +106,28 @@ char* instructionsToString(Instructions_t ins) {
     return detachStrbuf(&sbuf);
 }
 
+SliceInt_t codeReadOperands(const OpDefinition_t* def, Instructions_t ins, uint8_t* bytesRead) {
+    SliceInt_t operands = createSliceInt(def->argCount);
+    uint8_t offset = 0;
+
+    for (uint8_t i = 0; i < def->argCount; i++) {
+        uint8_t width = def->argWidths[i];
+        switch(width) {
+            case 2: 
+                operands[i] = (ins[offset] << 8) | ins[offset+1];
+                break;
+            case 1: 
+                operands[i] = ins[offset];
+                break;
+            default: 
+                assert(0 && "Unreachable");
+                break;
+        }
+        offset += width;
+    }
+    *bytesRead = offset;
+    return operands;
+}
 
 static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands) {
     if (def->argCount != sliceIntGetLen(operands)) {
@@ -136,6 +136,8 @@ static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands) {
     }
 
     switch (def->argCount) {
+        case 0: 
+            return cloneString(def->name);
         case 1: 
             return strFormat("%s %d", def->name, operands[0]);
     }

@@ -6,6 +6,7 @@
 /* List of supported in instructions (check c file for op structure)*/
 typedef enum OpCode {
     OP_CONSTANT = 0,
+    OP_ADD,
     _OP_COUNT,
 } OpCode_t;
 
@@ -22,6 +23,7 @@ typedef struct OpDefinition {
 
 /* Container for bytecode */
 typedef SliceByte_t Instructions_t; 
+
 char* instructionsToString(Instructions_t ins); 
 
 /* External API */

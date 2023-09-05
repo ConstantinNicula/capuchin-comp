@@ -80,6 +80,13 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
                 return ret;
             }
 
+            switch(infix->token->type) { // same as operator 
+                case TOKEN_PLUS: 
+                    compilerEmit(comp, OP_ADD, NULL);
+                    break;
+                default:
+                    return COMP_UNKNOWN_OPERATOR;
+            }
             break;
         }
 
@@ -89,7 +96,6 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
             
             int operands[] = {compilerAddConstant(comp, (Object_t*)integer)};
             compilerEmit(comp, OP_CONSTANT, operands);
-            
             break;
         }    
 

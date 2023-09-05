@@ -23,6 +23,7 @@ void testCodeMake() {
 
     TestCase_t testCases[] = {
         {.op = OP_CONSTANT, .operands={65534}, .expLen=3, .expBytes={(uint8_t)OP_CONSTANT, 255, 254}},
+        {.op = OP_ADD, .operands={}, .expLen=1, .expBytes={(uint8_t)OP_ADD}},
     };
 
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
@@ -72,15 +73,15 @@ void testCodeReadOperands() {
 
 void testInstructionsString() {
     SliceByte_t instructions[] = {
-        codeMakeV(OP_CONSTANT, 1), 
+        codeMakeV(OP_ADD), 
         codeMakeV(OP_CONSTANT, 2),
         codeMakeV(OP_CONSTANT, 65535),
     };
     int numInstructions = sizeof(instructions) / sizeof(instructions[0]);
 
-    const char* expected = "0000 OpConstant 1\n"
-                        "0003 OpConstant 2\n"
-                        "0006 OpConstant 65535\n";
+    const char* expected = "0000 OpAdd\n"
+                        "0001 OpConstant 2\n"
+                        "0004 OpConstant 65535\n";
 
     SliceByte_t concatted = createSliceByte(0);
     for (int i = 0; i < numInstructions; i++) {

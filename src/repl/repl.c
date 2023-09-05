@@ -6,8 +6,8 @@
 #include "../parser.h"
 #include "../lexer.h"
 #include "../utils.h"
-#include "../evaluator.h"
-#include "../env.h"
+#include "../compiler.h"
+#include "../vm.h"
 #include "../gc.h"
 
 #define PROMPT ">> "
@@ -21,32 +21,46 @@ static void printParserErrors(const char**err, uint32_t cnt){
     }
 }
 
-void evalInput(const char* input, Environment_t* env) {
+void evalInput(const char* input) {
     Lexer_t* lexer = createLexer(input);
     Parser_t* parser = createParser(lexer);
     Program_t* program = parserParseProgram(parser);
 
     if (parserGetErrorCount(parser) != 0) {
         printParserErrors(parserGetErrors(parser), parserGetErrorCount(parser));
-    } else {
-        Object_t* evalRes = evalProgram(program, env);
-
-        if (evalRes != NULL && evalRes->type != OBJECT_NULL) {
-            char* inspect = objectInspect(evalRes);
-            printf("%s\n", inspect);
-            free(inspect);
-        }
-
-        gcFreeExtRef(evalRes);
+        goto parser_err;
+    }
+    
+    Compiler_t comp = createCompiler();
+    CompError_t compErr = compilerCompile(&comp, program);        
+    if (compErr != COMP_NO_ERROR) {
+        printf("Woops! Compilation failed:\n %d\n", compErr);
+        goto comp_err;
     }
 
+    Bytecode_t bytecode = compilerGetBytecode(&comp);
+    Vm_t vm = createVm(&bytecode);
+    VmError_t vmErr = vmRun(&vm);
+    if (vmErr != VM_NO_ERROR) {
+        printf("Woops! Executing bytecode failed:\n %d\n", vmErr);
+        goto vm_err;
+    } 
+
+    Object_t* stackTop = vmStackTop(&vm);
+    printf("%s\n", objectInspect(stackTop));
+    gcForceRun();
+
+vm_err: 
+    cleanupVm(&vm);
+comp_err: 
+    cleanupCompiler(&comp);
+parser_err: 
     cleanupParser(&parser);
     cleanupProgram(&program);
 }
 
 void replMode() {
     char inputBuffer[4096] = "";
-    Environment_t* env = createEnvironment(NULL);
     while (true) {
         printf("%s", PROMPT);
         if(!fgets(inputBuffer, sizeof(inputBuffer), stdin))
@@ -55,9 +69,8 @@ void replMode() {
         if (strcmp(inputBuffer, "quit\n") == 0) 
             break;
             
-        evalInput(inputBuffer, env);
+        evalInput(inputBuffer);
     }
-    gcFreeExtRef(env);
 }
 
 char* readEntireFile(char* filename) {
@@ -80,9 +93,7 @@ char* readEntireFile(char* filename) {
 
 void fileExecMode(char* filename) {
     char* input = readEntireFile(filename);
-    Environment_t* env = createEnvironment(NULL);
-    evalInput(input, env);
-    gcFreeExtRef(env);
+    evalInput(input);
     free(input);
 }
 
