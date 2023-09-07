@@ -10,7 +10,9 @@
 
 typedef enum VmError {
     VM_NO_ERROR = 0, 
-    VM_STACK_OVERFLOW = 1, 
+    VM_STACK_OVERFLOW,
+    VM_UNSUPPORTED_TYPES,
+    VM_UNSUPPORTED_OPERATOR, 
 } VmError_t;
 
 typedef struct Vm {
@@ -30,7 +32,7 @@ void cleanupVm(Vm_t *vm);
 
 Object_t* vmStackTop(Vm_t *vm);
 VmError_t vmRun(Vm_t *vm);
-
+Object_t* vmLastPoppedStackElem(Vm_t *vm); 
 
 
 #endif

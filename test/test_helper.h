@@ -7,7 +7,9 @@ typedef enum {
     EXPECT_INTEGER,
     EXPECT_BOOL, 
     EXPECT_STRING,
-    EXPECT_NULL
+    EXPECT_NULL, 
+
+    EXPECT_END,
 } ExpectType_t;
 
 typedef struct GenericExpect {
@@ -23,7 +25,7 @@ typedef struct GenericExpect {
 #define _INT(x) (GenericExpect_t){.type=EXPECT_INTEGER, .il=(x)}
 #define _STRING(x) (GenericExpect_t){.type=EXPECT_STRING, .sl=(x)}
 #define _NIL (GenericExpect_t){.type=EXPECT_NULL}
-
+#define _END(GenericExpect_t) {.type=EXPECT_END}
 
 #define TEST_INT(expected, actual, message)\
     TEST_ASSERT_EQUAL_INT_MESSAGE(expected, actual, message)

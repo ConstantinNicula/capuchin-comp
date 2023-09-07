@@ -6,7 +6,16 @@
 /* List of supported in instructions (check c file for op structure)*/
 typedef enum OpCode {
     OP_CONSTANT = 0,
+
     OP_ADD,
+    OP_SUB,
+    OP_MUL, 
+    OP_DIV,
+    
+    OP_TRUE,
+    OP_FALSE,
+
+    OP_POP,
     _OP_COUNT,
 } OpCode_t;
 

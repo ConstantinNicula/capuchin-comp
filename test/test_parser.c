@@ -777,6 +777,8 @@ void testLiteralExpression(Expression_t* expression, GenericExpect_t exp) {
             break; 
         case EXPECT_NULL:
             TEST_ABORT();       
+        default:
+            TEST_ABORT();
     }
 }
 

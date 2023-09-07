@@ -9,8 +9,17 @@
 static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands);
 
 static OpDefinition_t definitions[_OP_COUNT] = {
-    {"OpConstant", .argCount=1, .argWidths={2}},
-    {"OpAdd", .argCount=0, .argWidths={0}},
+    [OP_CONSTANT] = {"OpConstant", .argCount=1, .argWidths={2}},
+
+    [OP_ADD] = {"OpAdd", .argCount=0, .argWidths={0}},
+    [OP_SUB] = {"OpSub", .argCount=0, .argWidths={0}},
+    [OP_MUL] = {"OpMul", .argCount=0, .argWidths={0}},
+    [OP_DIV] = {"OpDiv", .argCount=0, .argWidths={0}},
+
+    [OP_TRUE] = {"OpTrue", .argCount=0, .argWidths={0}},
+    [OP_FALSE] = {"OpFalse", .argCount=0, .argWidths={0}},
+
+    [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };
 
 

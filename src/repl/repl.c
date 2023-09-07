@@ -46,7 +46,7 @@ void evalInput(const char* input) {
         goto vm_err;
     } 
 
-    Object_t* stackTop = vmStackTop(&vm);
+    Object_t* stackTop = vmLastPoppedStackElem(&vm);
     printf("%s\n", objectInspect(stackTop));
     gcForceRun();
 
