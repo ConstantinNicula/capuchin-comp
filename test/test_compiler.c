@@ -107,6 +107,92 @@ void testCompilerBasic() {
                 NULL
             }
         },
+        {
+            .input = "1 > 2",
+            .expConstants = {_INT(1), _INT(2), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_GREATER_THAN),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "1 < 2",
+            .expConstants = {_INT(2), _INT(1), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_GREATER_THAN),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "1 == 2",
+            .expConstants = {_INT(1), _INT(2), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_EQUAL),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "1 != 2",
+            .expConstants = {_INT(1), _INT(2), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_NOT_EQUAL),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "true == false",
+            .expConstants = {_END()},
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_FALSE),
+                codeMakeV(OP_EQUAL),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "true != false",
+            .expConstants = {_END()},
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_FALSE),
+                codeMakeV(OP_NOT_EQUAL),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "-1",
+            .expConstants = {_INT(1), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_MINUS),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "!true",
+            .expConstants = { _END()},
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_BANG),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
     };
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
 

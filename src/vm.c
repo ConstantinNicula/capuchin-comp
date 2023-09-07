@@ -6,10 +6,19 @@ static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip);
 static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op);
 static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_t* left, Integer_t* right); 
 static VmError_t vmExecuteOpBoolean(Vm_t* vm, OpCode_t op); 
+
+static VmError_t vmExecuteComparison(Vm_t* vm, OpCode_t op);
+static VmError_t vmExecuteIntegerComparison(Vm_t* vm, OpCode_t op, Integer_t* left, Integer_t* right); 
+static VmError_t vmExecuteBooleanComparison(Vm_t* vm, OpCode_t op, Boolean_t* left, Boolean_t* right);
+
+static VmError_t vmExecuteBangOperator(Vm_t *vm);
+static VmError_t vmExecuteMinusOperator(Vm_t *vm);
+
 static VmError_t vmExecuteOpPop(Vm_t* vm); 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
+static Object_t* nativeBoolToBooleanObject(bool val);
 
 static Boolean_t True = (Boolean_t) {
     .type = OBJECT_BOOLEAN, 
@@ -67,8 +76,22 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_TRUE:
             case OP_FALSE: 
                 err = vmExecuteOpBoolean(vm, op);
+                break;  
+            
+            case OP_EQUAL:
+            case OP_NOT_EQUAL:
+            case OP_GREATER_THAN:
+                err = vmExecuteComparison(vm, op);
                 break;
-                
+
+            case OP_BANG:
+                err = vmExecuteBangOperator(vm);
+                break;
+
+            case OP_MINUS: 
+                err = vmExecuteMinusOperator(vm);
+                break;
+
             case OP_POP: 
                 err = vmExecuteOpPop(vm);
                 break;
@@ -128,9 +151,73 @@ static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_
     return vmPush(vm, (Object_t*)createInteger(result));
 }
 
+static VmError_t vmExecuteComparison(Vm_t* vm, OpCode_t op) {
+    Object_t* right = vmPop(vm);
+    Object_t* left = vmPop(vm);
+
+    if (left->type == OBJECT_INTEGER && right->type == OBJECT_INTEGER) {
+        return vmExecuteIntegerComparison(vm, op, (Integer_t*)left, (Integer_t*)right);
+    }
+
+    if (left->type == OBJECT_BOOLEAN && right->type == OBJECT_BOOLEAN) {
+        return vmExecuteBooleanComparison(vm, op, (Boolean_t*)left, (Boolean_t*)right);
+    }
+
+    return VM_UNSUPPORTED_TYPES; 
+}
+
+static VmError_t vmExecuteIntegerComparison(Vm_t* vm, OpCode_t op, Integer_t* left, Integer_t* right) {
+    switch(op) {
+        case OP_EQUAL:
+            return vmPush(vm, nativeBoolToBooleanObject(right->value == left->value));
+        case OP_NOT_EQUAL:
+            return vmPush(vm, nativeBoolToBooleanObject(right->value != left->value));
+        case OP_GREATER_THAN:
+            return vmPush(vm, nativeBoolToBooleanObject(left->value > right->value));
+        default:
+            return VM_UNSUPPORTED_OPERATOR;
+    }
+}
+
+static VmError_t vmExecuteBooleanComparison(Vm_t* vm, OpCode_t op, Boolean_t* left, Boolean_t* right) {
+    switch(op) {
+        case OP_EQUAL:
+            return vmPush(vm, nativeBoolToBooleanObject(left == right));
+        case OP_NOT_EQUAL:
+            return vmPush(vm, nativeBoolToBooleanObject(left != right));
+        default:
+            return VM_UNSUPPORTED_OPERATOR; 
+    }
+}
+
+static VmError_t vmExecuteBangOperator(Vm_t *vm) {
+    Object_t* operand = vmPop(vm);
+
+    switch(operand->type) {
+        case OBJECT_BOOLEAN:    
+            bool value = ((Boolean_t*)operand)->value; 
+            return vmPush(vm, nativeBoolToBooleanObject(!value));
+        default:
+            return vmPush(vm, (Object_t*) &False);
+    }
+}
+
+static VmError_t vmExecuteMinusOperator(Vm_t *vm) {
+    Object_t* operand = vmPop(vm);
+    if (operand->type != OBJECT_INTEGER) {
+        return VM_UNSUPPORTED_TYPES;
+    }
+
+    int64_t value = ((Integer_t*)operand)->value;
+    return vmPush(vm, (Object_t*)createInteger(-value));
+}
+
+static Object_t* nativeBoolToBooleanObject(bool val) {
+    return val ? (Object_t*) &True : (Object_t*) &False;
+}
+
 static VmError_t vmExecuteOpBoolean(Vm_t* vm, OpCode_t op) {
-    Boolean_t* objBool = (op == OP_TRUE) ? &True : &False;
-    return vmPush(vm, (Object_t*)objBool);
+    return vmPush(vm, nativeBoolToBooleanObject(op == OP_TRUE));
 }
 
 static VmError_t vmExecuteOpPop(Vm_t* vm) {

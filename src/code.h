@@ -15,6 +15,13 @@ typedef enum OpCode {
     OP_TRUE,
     OP_FALSE,
 
+    OP_EQUAL,
+    OP_NOT_EQUAL,
+    OP_GREATER_THAN,
+
+    OP_MINUS,
+    OP_BANG,
+
     OP_POP,
     _OP_COUNT,
 } OpCode_t;

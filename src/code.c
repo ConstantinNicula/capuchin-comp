@@ -19,6 +19,13 @@ static OpDefinition_t definitions[_OP_COUNT] = {
     [OP_TRUE] = {"OpTrue", .argCount=0, .argWidths={0}},
     [OP_FALSE] = {"OpFalse", .argCount=0, .argWidths={0}},
 
+    [OP_EQUAL] = {"OpEqual", .argCount=0, .argWidths={0}},
+    [OP_NOT_EQUAL] = {"OpNotEqual", .argCount=0, .argWidths={0}},
+    [OP_GREATER_THAN] = {"OpGreaterThan", .argCount=0, .argWidths={0}},
+
+    [OP_MINUS] = {"OpMinus", .argCount=0, .argWidths={0}},
+    [OP_BANG] = {"OpBang", .argCount=0, .argWidths={0}},
+
     [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };
 

@@ -27,9 +27,10 @@ Bytecode_t compilerGetBytecode(Compiler_t* comp) {
 static CompError_t compilerCompileProgram(Compiler_t* comp, Program_t* program);
 static CompError_t compilerCompileStatement(Compiler_t* comp, Statement_t* statement);
 static CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression);
-static CompError_t compilerCompileInfixExpression(Compiler_t* comp, Expression_t* expression); 
-static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, Expression_t* expression); 
-static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, Expression_t* expression);
+static CompError_t compilerCompileInfixExpression(Compiler_t* comp, InfixExpression_t* expression); 
+static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, IntegerLiteral_t* expression); 
+static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, BooleanLiteral_t* expression);
+static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpression_t* prefix); 
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
 static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, int operands[]);
@@ -75,13 +76,16 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
 
     switch(expression->type) {
         case EXPRESSION_INFIX_EXPRESSION: 
-            err = compilerCompileInfixExpression(comp, expression);
+            err = compilerCompileInfixExpression(comp, (InfixExpression_t*) expression);
+            break;
+        case EXPRESSION_PREFIX_EXPRESSION:
+            err = compilerCompilePrefixExpression(comp, (PrefixExpression_t*) expression);
             break;
         case EXPRESSION_INTEGER_LITERAL: 
-            err = compilerCompileIntegerLiteral(comp, expression);
+            err = compilerCompileIntegerLiteral(comp, (IntegerLiteral_t*) expression);
             break;
         case EXPRESSION_BOOLEAN_LITERAL: 
-            err = compilerCompileBooleanLiteral(comp, expression);
+            err = compilerCompileBooleanLiteral(comp, (BooleanLiteral_t*) expression);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
@@ -90,19 +94,30 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
     return err;
 }
 
-static CompError_t compilerCompileInfixExpression(Compiler_t* comp, Expression_t* expression) {
-    InfixExpression_t* infix = (InfixExpression_t*) expression;
-    CompError_t ret = compilerCompileExpression(comp, infix->left);
+static CompError_t compilerCompileInfixExpression(Compiler_t* comp, InfixExpression_t* infix) {
+    TokenType_t operator = infix->token->type; 
+    Expression_t* operandLeft = infix->left;
+    Expression_t* operandRight = infix->right;
+
+    // special handling of LT operator at compile time.
+    if (operator == TOKEN_LT) {
+        Expression_t*tmp = operandLeft;
+        operandLeft = operandRight;
+        operandRight = tmp;
+        operator = TOKEN_GT;
+    }
+
+    CompError_t ret = compilerCompileExpression(comp, operandLeft);
     if (ret != COMP_NO_ERROR) {
         return ret;
     }
 
-    ret = compilerCompileExpression(comp, infix->right);
+    ret = compilerCompileExpression(comp, operandRight);
     if (ret != COMP_NO_ERROR) {
         return ret;
     }
 
-    switch(infix->token->type) { // same as operator 
+    switch(operator) { 
         case TOKEN_PLUS: 
             compilerEmit(comp, OP_ADD, NULL);
             break;
@@ -114,7 +129,16 @@ static CompError_t compilerCompileInfixExpression(Compiler_t* comp, Expression_t
             break;
         case TOKEN_SLASH: 
             compilerEmit(comp, OP_DIV, NULL);
-            break; 
+            break;
+        case TOKEN_EQ: 
+            compilerEmit(comp, OP_EQUAL, NULL);
+            break;
+        case TOKEN_NOT_EQ:
+            compilerEmit(comp, OP_NOT_EQUAL, NULL);
+            break;
+        case TOKEN_GT: 
+            compilerEmit(comp, OP_GREATER_THAN, NULL);
+            break;
         default:
             return COMP_UNKNOWN_OPERATOR;
     }
@@ -122,8 +146,7 @@ static CompError_t compilerCompileInfixExpression(Compiler_t* comp, Expression_t
     return COMP_NO_ERROR;
 }
 
-static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, Expression_t* expression) {
-    IntegerLiteral_t* intLit = (IntegerLiteral_t*) expression;
+static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, IntegerLiteral_t* intLit) {
     Integer_t* integer = createInteger(intLit->value);
     
     int operands[] = {compilerAddConstant(comp, (Object_t*)integer)};
@@ -132,12 +155,31 @@ static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, Expression_t*
     return COMP_NO_ERROR;
 }
 
-static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, Expression_t* expression) {
-    BooleanLiteral_t* boolLit = (BooleanLiteral_t*) expression;
+static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, BooleanLiteral_t* boolLit) {
     if (boolLit->value) {
         compilerEmit(comp, OP_TRUE, NULL); 
     } else {
         compilerEmit(comp, OP_FALSE, NULL); 
+    }
+
+    return COMP_NO_ERROR;
+}
+
+static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpression_t* prefix) {
+    CompError_t err = compilerCompileExpression(comp, prefix->right);
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+
+    switch(prefix->token->type) {
+        case TOKEN_BANG: 
+            compilerEmit(comp, OP_BANG, NULL);
+            break;
+        case TOKEN_MINUS:
+            compilerEmit(comp, OP_MINUS, NULL);
+            break;
+        default:
+            return COMP_UNKNOWN_OPERATOR;
     }
 
     return COMP_NO_ERROR;

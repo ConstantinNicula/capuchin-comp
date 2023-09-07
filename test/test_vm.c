@@ -97,6 +97,10 @@ void testIntegerArithmetic() {
         {"5 * 2 + 10", _INT(20)},
         {"5 + 2 * 10", _INT(25)},
         {"5 * (2 + 10)", _INT(60)},
+        {"-5", _INT(-5)},
+        {"-10", _INT(-10)},
+        {"-50 + 100 + -50", _INT(0)},
+        {"(5 + 10 * 2 + 15 / 3) * 2 + -10", _INT(50)},
     };
 
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
@@ -107,6 +111,29 @@ void testBooleanExpressions() {
     TestCase_t vmTestCases[] = {
         {"true", _BOOL(true)}, 
         {"false", _BOOL(false)},
+        {"1 < 2", _BOOL(true)},
+        {"1 > 2", _BOOL(false)},
+        {"1 < 1", _BOOL(false)},
+        {"1 > 1", _BOOL(false)},
+        {"1 == 1", _BOOL(true)},
+        {"1 != 1", _BOOL(false)},
+        {"1 == 2", _BOOL(false)},
+        {"1 != 2", _BOOL(true)},
+        {"true == true", _BOOL(true)},
+        {"false == false", _BOOL(true)},
+        {"true == false", _BOOL(false)},
+        {"true != false", _BOOL(true)},
+        {"false != true", _BOOL(true)},
+        {"(1 < 2) == true", _BOOL(true)},
+        {"(1 < 2) == false", _BOOL(false)},
+        {"(1 > 2) == true", _BOOL(false)},
+        {"(1 > 2) == false", _BOOL(true)},
+        {"!true", _BOOL(false)},
+        {"!false", _BOOL(true)},
+        {"!5", _BOOL(false)},
+        {"!!true", _BOOL(true)},
+        {"!!false", _BOOL(false)},
+        {"!!5", _BOOL(true)},
     };
 
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
