@@ -25,6 +25,7 @@ void runVmTest(TestCase_t tc[], int numTestCases);
 void testExpectedObject(GenericExpect_t *expected, Object_t* actual); 
 void testIntegerObject(int64_t expected, Object_t* obj); 
 void testBooleanObject(bool expected, Object_t* obj);
+void testNullObject(Object_t* obj);
 
 void runVmTest(TestCase_t tc[], int numTestCases) {
 
@@ -63,6 +64,9 @@ void testExpectedObject(GenericExpect_t *expected, Object_t* actual) {
         case EXPECT_BOOL: 
             testBooleanObject(expected->bl, actual);
             break;
+        case EXPECT_NULL:
+            testNullObject(actual);
+            break;
         default: 
             TEST_ABORT();
     }
@@ -82,6 +86,9 @@ void testBooleanObject(bool expected, Object_t* obj) {
     TEST_ASSERT_EQUAL_INT_MESSAGE(expected, boolObj->value, "Object value is not correct");
 }
 
+void testNullObject(Object_t* obj) {
+    TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_NULL, obj->type, "Object type not OBJECT_BOOLEAN");
+}
 
 void testIntegerArithmetic() {
     TestCase_t vmTestCases[] = {
@@ -134,6 +141,25 @@ void testBooleanExpressions() {
         {"!!true", _BOOL(true)},
         {"!!false", _BOOL(false)},
         {"!!5", _BOOL(true)},
+        {"!(if (false) { 5; })", _BOOL(true)},
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
+void testConditionals() {
+    TestCase_t vmTestCases[] = {
+        {"if (true) { 10 }", _INT(10)},
+        {"if (true) { 10 } else { 20 }", _INT(10)},
+        {"if (false) { 10 } else { 20 } ", _INT(20)},
+        {"if (1) { 10 }", _INT(10)},
+        {"if (1 < 2) { 10 }", _INT(10)},
+        {"if (1 < 2) { 10 } else { 20 }", _INT(10)},
+        {"if (1 > 2) { 10 } else { 20 }", _INT(20)},
+        {"if (1 > 2) { 10 }", _NIL},
+        {"if (false) { 10 }", _NIL},
+        {"if ((if (false) { 10 })) { 10 } else { 20 }", _INT(20)},
     };
 
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
@@ -145,5 +171,6 @@ int main(void) {
    UNITY_BEGIN();
    RUN_TEST(testIntegerArithmetic);
    RUN_TEST(testBooleanExpressions);
+   RUN_TEST(testConditionals);
    return UNITY_END();
 }

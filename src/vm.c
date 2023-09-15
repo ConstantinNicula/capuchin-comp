@@ -1,11 +1,11 @@
 #include "vm.h"
 #include "utils.h"
 
-
 static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip); 
 static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op);
 static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_t* left, Integer_t* right); 
 static VmError_t vmExecuteOpBoolean(Vm_t* vm, OpCode_t op); 
+static VmError_t vmExecuteOpNull(Vm_t* vm); 
 
 static VmError_t vmExecuteComparison(Vm_t* vm, OpCode_t op);
 static VmError_t vmExecuteIntegerComparison(Vm_t* vm, OpCode_t op, Integer_t* left, Integer_t* right); 
@@ -14,10 +14,15 @@ static VmError_t vmExecuteBooleanComparison(Vm_t* vm, OpCode_t op, Boolean_t* le
 static VmError_t vmExecuteBangOperator(Vm_t *vm);
 static VmError_t vmExecuteMinusOperator(Vm_t *vm);
 
+static VmError_t vmExecuteOpJump(Vm_t* vm, uint32_t* ip);
+static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip);
+
 static VmError_t vmExecuteOpPop(Vm_t* vm); 
+
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
+static bool vmIsTruthy(Object_t* obj);
 static Object_t* nativeBoolToBooleanObject(bool val);
 
 static Boolean_t True = (Boolean_t) {
@@ -30,6 +35,9 @@ static Boolean_t False = (Boolean_t) {
     .value = false,
 };
 
+static Null_t Null = (Null_t) {
+    .type = OBJECT_NULL
+};
 
 Vm_t createVm(Bytecode_t* bytecode) {
     return (Vm_t) {
@@ -77,7 +85,11 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_FALSE: 
                 err = vmExecuteOpBoolean(vm, op);
                 break;  
-            
+
+            case OP_NULL:
+                err = vmExecuteOpNull(vm);
+                break;
+
             case OP_EQUAL:
             case OP_NOT_EQUAL:
             case OP_GREATER_THAN:
@@ -95,6 +107,15 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_POP: 
                 err = vmExecuteOpPop(vm);
                 break;
+
+            case OP_JUMP: 
+                err = vmExecuteOpJump(vm, &ip);
+                break;
+            
+            case OP_JUMP_NOT_TRUTHY:
+                err = vmExecuteOpJumpNotTruthy(vm, &ip);
+                break;
+            
             default:
                 break;
         }
@@ -197,6 +218,8 @@ static VmError_t vmExecuteBangOperator(Vm_t *vm) {
         case OBJECT_BOOLEAN:    
             bool value = ((Boolean_t*)operand)->value; 
             return vmPush(vm, nativeBoolToBooleanObject(!value));
+        case OBJECT_NULL:
+            return vmPush(vm, nativeBoolToBooleanObject(true));
         default:
             return vmPush(vm, (Object_t*) &False);
     }
@@ -236,9 +259,43 @@ static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
     return VM_NO_ERROR;
 }
 
+static VmError_t vmExecuteOpJump(Vm_t* vm, uint32_t* ip) {
+    uint16_t pos = ((vm->instructions[*ip+1]) << 8) | (vm->instructions[*ip + 2]);
+    *ip = pos - 1;
+
+    return VM_NO_ERROR; 
+}
+
+static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip) {
+    uint16_t pos = ((vm->instructions[*ip+1]) << 8) | (vm->instructions[*ip + 2]);
+    *ip += 2;
+
+    Object_t* condition = vmPop(vm);
+    if (!vmIsTruthy(condition)) {
+        *ip = pos - 1;
+    }
+
+    return VM_NO_ERROR;
+}
+
+static VmError_t vmExecuteOpNull(Vm_t* vm) {
+    return vmPush(vm, (Object_t*) &Null);
+} 
+
 static Object_t* vmPop(Vm_t* vm) {
     Object_t* obj = vm->stack[vm->sp-1]; 
     vm->sp--;
     return obj;
 }
 
+
+static bool vmIsTruthy(Object_t* obj) {
+    switch(obj->type) {
+        case OBJECT_BOOLEAN:
+            return ((Boolean_t*)obj)->value;
+        case OBJECT_NULL:
+            return false;
+        default:
+            return true;
+    }
+}

@@ -199,6 +199,47 @@ void testCompilerBasic() {
     runCompilerTests(testCases, numTestCases);
 }
 
+void testConditionals() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "if (true) {10}; 3333;",
+            .expConstants ={_INT(10), _INT(3333), _END()},
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_JUMP_NOT_TRUTHY, 10),
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_JUMP, 11),
+                codeMakeV(OP_NULL),
+                codeMakeV(OP_POP),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_POP),
+                NULL,
+            }
+        },
+        {
+            .input = "if (true) {10} else {20}; 3333;",
+            .expConstants ={_INT(10), _INT(20), _INT(3333), _END()},
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_JUMP_NOT_TRUTHY, 10),
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_JUMP, 13),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_POP),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_POP),
+                NULL,
+            }
+        },
+        
+    };
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
+
+
+
 void runCompilerTests(TestCase_t* tc, int numTc) {
     for (int i = 0; i < numTc; i++) {
         Lexer_t* lexer = createLexer(tc[i].input);
@@ -232,8 +273,14 @@ void testInstructions(SliceByte_t expected[], SliceByte_t actual) {
     while (expected[numExpected] != NULL) numExpected++;
 
     SliceByte_t concatted = concatInstructions(expected, numExpected); 
-    TEST_STRING(instructionsToString(concatted), instructionsToString(actual), "Wrong instruction"); 
+    char* expStr = instructionsToString(concatted);
+    char* actualStr = instructionsToString(actual);
+
+    TEST_STRING(expStr, actualStr, "Wrong instruction"); 
+
     cleanupSliceByte(concatted);
+    free(expStr);
+    free(actualStr);
 }
 
 SliceByte_t concatInstructions(SliceByte_t expected[], int num) {
@@ -281,5 +328,6 @@ void cleanupInstructions(Instructions_t instr[]) {
 int main(void) {
    UNITY_BEGIN();
    RUN_TEST(testCompilerBasic);
+   RUN_TEST(testConditionals);
    return UNITY_END();
 }

@@ -39,3 +39,12 @@ void slicePtrAppend(void** ptrOut, void* buf, size_t len, size_t elemSize) {
     *header += len;
     (*ptrOut) = slicePtrGetData(header);
 }
+
+void sliceResize(void** ptrOut, size_t len, size_t elemSize) {
+    size_t* header = slicePtrGetHeader(*ptrOut);
+    header = realloc(header, sizeof(size_t) + len * elemSize);
+    if (!header) 
+        HANDLE_OOM();
+    *header = len;
+    (*ptrOut) = slicePtrGetData(header);
+}

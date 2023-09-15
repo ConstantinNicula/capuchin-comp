@@ -7,10 +7,17 @@
 #include "code.h"
 #include "vector.h"
 
+typedef struct EmittedInstruction {
+    OpCode_t opcode;
+    uint32_t position; 
+} EmittedInstruction_t; 
 
 typedef struct Compiler {
     Instructions_t instructions;
     VectorObjects_t* constants; 
+
+    EmittedInstruction_t lastInstruction;
+    EmittedInstruction_t previousInstruction;
 } Compiler_t;
 
 typedef enum CompError {

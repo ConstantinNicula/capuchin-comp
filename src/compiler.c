@@ -25,16 +25,27 @@ Bytecode_t compilerGetBytecode(Compiler_t* comp) {
 }
 
 static CompError_t compilerCompileProgram(Compiler_t* comp, Program_t* program);
+
 static CompError_t compilerCompileStatement(Compiler_t* comp, Statement_t* statement);
+static CompError_t compilerCompileExpressionStatement(Compiler_t* comp, ExpressionStatement_t* statement);
+static CompError_t compilerCompileBlockStatement(Compiler_t* comp, BlockStatement_t* statement);
+
 static CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression);
 static CompError_t compilerCompileInfixExpression(Compiler_t* comp, InfixExpression_t* expression); 
 static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, IntegerLiteral_t* expression); 
 static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, BooleanLiteral_t* expression);
 static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpression_t* prefix); 
+static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t* expression);
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
-static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, int operands[]);
-static uint32_t compileAddInstruction(Compiler_t* comp, SliceByte_t ins); 
+static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, const int operands[]);
+static uint32_t compilerAddInstruction(Compiler_t* comp, SliceByte_t ins); 
+
+static void compilerSetLastInstruction(Compiler_t* comp, OpCode_t op, uint32_t pos); 
+static bool compilerLastInstructionIsPop(Compiler_t* comp); 
+static void compilerRemoveLastPop(Compiler_t* comp); 
+static void compilerReplaceInstruction(Compiler_t* comp, uint32_t pos, SliceByte_t newInstruction); 
+static void compilerChangeOperand(Compiler_t* comp, uint32_t pos, int operand); 
 
 CompError_t compilerCompile(Compiler_t* comp, Program_t* program) {
     return compilerCompileProgram(comp, program);
@@ -56,20 +67,44 @@ CompError_t compilerCompileProgram(Compiler_t* comp, Program_t* program) {
 
 CompError_t compilerCompileStatement(Compiler_t* comp, Statement_t* statement) {
     switch(statement->type) {
-        case STATEMENT_EXPRESSION: {
-            Expression_t* expression = ((ExpressionStatement_t*) statement)->expression;
-            CompError_t ret = compilerCompileExpression(comp, expression);
-            if (ret != COMP_NO_ERROR) {
-                return ret;
-            }
-            compilerEmit(comp, OP_POP, NULL);
+        case STATEMENT_EXPRESSION: 
+            compilerCompileExpressionStatement(comp, (ExpressionStatement_t*) statement);
             break;
-        }
+        case STATEMENT_BLOCK: 
+            compilerCompileBlockStatement(comp, (BlockStatement_t*) statement);
+            break;
         default: 
             assert(0 && "Unreachable: Unhandled statement type"); 
     }
     return COMP_NO_ERROR;
 }
+
+
+static CompError_t compilerCompileExpressionStatement(Compiler_t* comp, ExpressionStatement_t* statement) {
+    Expression_t* expression = statement->expression;
+    CompError_t err = compilerCompileExpression(comp, expression);
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+    compilerEmit(comp, OP_POP, NULL);
+    return COMP_NO_ERROR;
+}
+
+
+static CompError_t compilerCompileBlockStatement(Compiler_t* comp, BlockStatement_t* statement) {
+    Statement_t** stmts = blockStatementGetStatements(statement);
+    uint32_t stmtCnt = blockStatementGetStatementCount(statement);
+
+    for (uint32_t i = 0; i < stmtCnt; i++) {
+        CompError_t err = compilerCompileStatement(comp, stmts[i]);
+        if (err != COMP_NO_ERROR) {
+            break;
+        } 
+    }
+
+    return COMP_NO_ERROR;
+}
+
 
 CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression) {
     CompError_t err = COMP_NO_ERROR;
@@ -86,6 +121,9 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
             break;
         case EXPRESSION_BOOLEAN_LITERAL: 
             err = compilerCompileBooleanLiteral(comp, (BooleanLiteral_t*) expression);
+            break;
+        case EXPRESSION_IF_EXPRESSION:
+            err = compilerCompileIfExpression(comp, (IfExpression_t*) expression);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
@@ -149,7 +187,7 @@ static CompError_t compilerCompileInfixExpression(Compiler_t* comp, InfixExpress
 static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, IntegerLiteral_t* intLit) {
     Integer_t* integer = createInteger(intLit->value);
     
-    int operands[] = {compilerAddConstant(comp, (Object_t*)integer)};
+    const int operands[] = {compilerAddConstant(comp, (Object_t*)integer)};
     compilerEmit(comp, OP_CONSTANT, operands);
 
     return COMP_NO_ERROR;
@@ -185,6 +223,52 @@ static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpre
     return COMP_NO_ERROR;
 }
 
+
+static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t* expression) {
+    CompError_t err = compilerCompileExpression(comp, expression->condition);
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+
+    // Emit an `OpJumpNotTruthy` with a bogus value
+    uint32_t jumpNotTruthyPos = compilerEmit(comp, OP_JUMP_NOT_TRUTHY, (const int[]) {9999});
+
+    err = compilerCompileBlockStatement(comp, expression->consequence);
+    if (err != COMP_NO_ERROR) {
+        return err; 
+    }
+
+    if (compilerLastInstructionIsPop(comp)) {
+        compilerRemoveLastPop(comp);
+    }
+
+    // Emit an `OpJump` with a bogus value 
+    uint32_t jumpPos = compilerEmit(comp, OP_JUMP, (const int[]) {9999});
+    
+    uint32_t afterConsequencePos = sliceByteGetLen(comp->instructions);
+    compilerChangeOperand(comp, jumpNotTruthyPos, afterConsequencePos);
+
+    // Emit OP_NULL in case alternative branch does not exist
+    if (expression->alternative == NULL) {
+        compilerEmit(comp, OP_NULL, NULL);
+    } else {
+        err = compilerCompileBlockStatement(comp, expression->alternative);
+        if (err != COMP_NO_ERROR) {
+            return err;
+        }
+
+        if (compilerLastInstructionIsPop(comp)) {
+            compilerRemoveLastPop(comp);
+        }
+
+    }
+
+    uint32_t afterAlternativePos = sliceByteGetLen(comp->instructions);
+    compilerChangeOperand(comp, jumpPos, afterAlternativePos);   
+
+    return COMP_NO_ERROR;
+}
+
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj) {
     // TO DO GC add external ref :)
     vectorObjectsAppend(comp->constants, obj);
@@ -192,15 +276,46 @@ static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj) {
 }
 
 
-static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op,  int operands[]) {
+static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op,const int operands[]) {
     SliceByte_t ins = codeMake(op, operands);
-    uint32_t pos = compileAddInstruction(comp, ins);
+    uint32_t pos = compilerAddInstruction(comp, ins);
+    compilerSetLastInstruction(comp, op, pos);
+
     cleanupSliceByte(ins);
     return pos;
 }
 
-static uint32_t compileAddInstruction(Compiler_t* comp, SliceByte_t ins) {
+static uint32_t compilerAddInstruction(Compiler_t* comp, SliceByte_t ins) {
     uint32_t posNewInstruction = sliceByteGetLen(comp->instructions);
     sliceByteAppend(&comp->instructions, ins, sliceByteGetLen(ins));
     return posNewInstruction;
+}
+
+static void compilerSetLastInstruction(Compiler_t* comp, OpCode_t op, uint32_t pos) {
+    comp->previousInstruction = comp->lastInstruction; 
+    comp->lastInstruction = (EmittedInstruction_t) {.opcode = op, .position = pos};
+}
+
+static bool compilerLastInstructionIsPop(Compiler_t* comp) {
+    return comp->lastInstruction.opcode == OP_POP;
+}
+
+static void compilerRemoveLastPop(Compiler_t* comp) {
+    sliceByteResize(&comp->instructions, comp->lastInstruction.position);
+    comp->lastInstruction = comp->previousInstruction;
+}
+
+static void compilerReplaceInstruction(Compiler_t* comp, uint32_t pos, SliceByte_t newInstruction) {
+    uint32_t len = sliceByteGetLen(newInstruction);
+    for (uint32_t i = 0; i < len; i++) {
+        comp->instructions[pos + i] = newInstruction[i];
+    } 
+}
+
+static void compilerChangeOperand(Compiler_t* comp, uint32_t pos, int operand) {
+    OpCode_t op = comp->instructions[pos];
+    SliceByte_t newInstruction = codeMake(op, (const int[]) {operand});
+
+    compilerReplaceInstruction(comp, pos, newInstruction);
+    cleanupSliceByte(newInstruction);
 }

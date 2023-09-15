@@ -18,6 +18,7 @@ static OpDefinition_t definitions[_OP_COUNT] = {
 
     [OP_TRUE] = {"OpTrue", .argCount=0, .argWidths={0}},
     [OP_FALSE] = {"OpFalse", .argCount=0, .argWidths={0}},
+    [OP_NULL] = {"OpNull", .argCount=0, .argWidths={0}},
 
     [OP_EQUAL] = {"OpEqual", .argCount=0, .argWidths={0}},
     [OP_NOT_EQUAL] = {"OpNotEqual", .argCount=0, .argWidths={0}},
@@ -25,6 +26,9 @@ static OpDefinition_t definitions[_OP_COUNT] = {
 
     [OP_MINUS] = {"OpMinus", .argCount=0, .argWidths={0}},
     [OP_BANG] = {"OpBang", .argCount=0, .argWidths={0}},
+
+    [OP_JUMP_NOT_TRUTHY] = {"OpJumpNotTruthy", .argCount=1, .argWidths={2}},
+    [OP_JUMP] = {"OpJump", .argCount=1, .argWidths={2}},
 
     [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };
@@ -58,7 +62,7 @@ SliceByte_t codeMakeV(OpCode_t op, ...) {
     return ret;
 }
 
-SliceByte_t codeMake(OpCode_t op, int* operands) {
+SliceByte_t codeMake(OpCode_t op, const int operands[]) {
     const OpDefinition_t* def = opLookup(op);
     if (!def) {
         // return empty slice 

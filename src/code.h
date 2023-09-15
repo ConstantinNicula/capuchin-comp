@@ -14,6 +14,7 @@ typedef enum OpCode {
     
     OP_TRUE,
     OP_FALSE,
+    OP_NULL,
 
     OP_EQUAL,
     OP_NOT_EQUAL,
@@ -21,6 +22,9 @@ typedef enum OpCode {
 
     OP_MINUS,
     OP_BANG,
+
+    OP_JUMP_NOT_TRUTHY,
+    OP_JUMP,
 
     OP_POP,
     _OP_COUNT,
@@ -45,7 +49,7 @@ char* instructionsToString(Instructions_t ins);
 /* External API */
 
 const OpDefinition_t*  opLookup(OpCode_t op);
-SliceByte_t codeMake(OpCode_t op, int* operands);
+SliceByte_t codeMake(OpCode_t op, const int operands[]);
 SliceByte_t codeMakeV(OpCode_t op, ...);
 SliceInt_t codeReadOperands(const OpDefinition_t*def, Instructions_t ins, uint8_t* bytesRead);
 #endif

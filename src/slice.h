@@ -11,6 +11,7 @@ typedef TYPE* _SLICE_TYPE(NAME);                                         \
 _SLICE_TYPE(NAME) createSlice##NAME(size_t sz);                          \
 void cleanupSlice##NAME(_SLICE_TYPE(NAME) slice);                        \
 size_t slice##NAME##GetLen(_SLICE_TYPE(NAME) slice);                     \
+void slice##NAME##Resize(_SLICE_TYPE(NAME) *slice, size_t len);          \
 void slice##NAME##Append(_SLICE_TYPE(NAME) *slice, TYPE* buf, size_t len);
 
 
@@ -29,6 +30,11 @@ size_t slice##NAME##GetLen(_SLICE_TYPE(NAME) slice) { \
     extern size_t slicePtrGetLen(void*);              \
     return slicePtrGetLen(slice);                     \
 }                                                     \
+\
+void slice##NAME##Resize(_SLICE_TYPE(NAME) *slicePtr, size_t len) {  \
+    extern void sliceResize(void**, size_t, size_t);                 \
+    sliceResize((void**)slicePtr, len, sizeof(TYPE));                \
+}                                                                    \
 \
 void slice##NAME##Append(_SLICE_TYPE(NAME) *slicePtr, TYPE* buf, size_t len) {  \
     extern void slicePtrAppend(void**, void*, size_t, size_t);                  \
