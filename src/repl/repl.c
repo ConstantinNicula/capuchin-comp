@@ -21,7 +21,7 @@ static void printParserErrors(const char**err, uint32_t cnt){
     }
 }
 
-void evalInput(const char* input) {
+void evalInput(const char* input, SymbolTable_t* symTable, Object_t** globals) {
     Lexer_t* lexer = createLexer(input);
     Parser_t* parser = createParser(lexer);
     Program_t* program = parserParseProgram(parser);
@@ -31,7 +31,7 @@ void evalInput(const char* input) {
         goto parser_err;
     }
     
-    Compiler_t comp = createCompiler();
+    Compiler_t comp = createCompilerWithState(symTable);
     CompError_t compErr = compilerCompile(&comp, program);        
     if (compErr != COMP_NO_ERROR) {
         printf("Woops! Compilation failed:\n %d\n", compErr);
@@ -39,7 +39,7 @@ void evalInput(const char* input) {
     }
 
     Bytecode_t bytecode = compilerGetBytecode(&comp);
-    Vm_t vm = createVm(&bytecode);
+    Vm_t vm = createVmWithStore(&bytecode, globals);
     VmError_t vmErr = vmRun(&vm);
     if (vmErr != VM_NO_ERROR) {
         printf("Woops! Executing bytecode failed:\n %d\n", vmErr);
@@ -48,7 +48,8 @@ void evalInput(const char* input) {
 
     Object_t* stackTop = vmLastPoppedStackElem(&vm);
     printf("%s\n", objectInspect(stackTop));
-    gcForceRun();
+    // TO DO: fix memory leak (nothing is gc'd at the moment)
+    //gcForceRun();
 
 vm_err: 
     cleanupVm(&vm);
@@ -61,6 +62,8 @@ parser_err:
 
 void replMode() {
     char inputBuffer[4096] = "";
+    Object_t** globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*));
+    SymbolTable_t* symTable = createSymbolTable(); 
     while (true) {
         printf("%s", PROMPT);
         if(!fgets(inputBuffer, sizeof(inputBuffer), stdin))
@@ -69,7 +72,7 @@ void replMode() {
         if (strcmp(inputBuffer, "quit\n") == 0) 
             break;
             
-        evalInput(inputBuffer);
+        evalInput(inputBuffer, symTable, globals);
     }
 }
 
@@ -93,7 +96,9 @@ char* readEntireFile(char* filename) {
 
 void fileExecMode(char* filename) {
     char* input = readEntireFile(filename);
-    evalInput(input);
+    Object_t** globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*));
+    SymbolTable_t* symTable = createSymbolTable();
+    evalInput(input, symTable, globals);
     free(input);
 }
 

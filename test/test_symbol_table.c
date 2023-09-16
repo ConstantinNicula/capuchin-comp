@@ -20,20 +20,20 @@ void testDefine() {
     };
     int numTests = sizeof(expected)/sizeof(expected[0]);
     
-    SymbolTable_t global = createSymbolTable();
+    SymbolTable_t* global = createSymbolTable();
 
     for (int i = 0 ; i < numTests; i++) {
-        Symbol_t *actual = symbolTableDefine(&global, expected[i].name);
+        Symbol_t *actual = symbolTableDefine(global, expected[i].name);
         compareSymbol(&expected[i], actual);
     }
 
-    cleanupSymbolTable(&global);
+    cleanupSymbolTable(global);
 }
 
 void testResolveGlobal() {
-    SymbolTable_t global = createSymbolTable();
-    symbolTableDefine(&global, "a");
-    symbolTableDefine(&global, "b");
+    SymbolTable_t *global = createSymbolTable();
+    symbolTableDefine(global, "a");
+    symbolTableDefine(global, "b");
     
     Symbol_t expected[] = {
         {.name="a", .scope=SCOPE_GLOBAL, .index=0},
@@ -42,11 +42,11 @@ void testResolveGlobal() {
     int numTests = sizeof(expected)/sizeof(expected[0]);
     
     for (int i = 0; i < numTests; i++) {
-        Symbol_t* result = symbolTableResolve(&global, expected[i].name);
+        Symbol_t* result = symbolTableResolve(global, expected[i].name);
         compareSymbol(&expected[i], result);
     }
 
-    cleanupSymbolTable(&global);
+    cleanupSymbolTable(global);
 }
 
 bool compareSymbol(Symbol_t* exp, Symbol_t* actual) {

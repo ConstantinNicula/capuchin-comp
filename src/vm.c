@@ -19,11 +19,15 @@ static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip);
 
 static VmError_t vmExecuteOpPop(Vm_t* vm); 
 
+static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip); 
+static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip); 
+
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
 static bool vmIsTruthy(Object_t* obj);
 static Object_t* nativeBoolToBooleanObject(bool val);
+static uint16_t readUint16BigEndian(uint8_t* ptr); 
 
 static Boolean_t True = (Boolean_t) {
     .type = OBJECT_BOOLEAN, 
@@ -44,13 +48,29 @@ Vm_t createVm(Bytecode_t* bytecode) {
         .constants = bytecode->constants,
         .instructions = bytecode->instructions, 
         .sp = 0, 
-        .stack = mallocChk(STACK_SIZE * sizeof(Object_t*))
+        .stack = mallocChk(STACK_SIZE * sizeof(Object_t*)),
+        .externalStorage = false,
+        .globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*)),
     };
 } 
+
+Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
+    return (Vm_t) {
+        .constants = bytecode->constants,
+        .instructions = bytecode->instructions, 
+        .sp = 0, 
+        .stack = mallocChk(STACK_SIZE * sizeof(Object_t*)),
+        .externalStorage = true,
+        .globals = s,
+    };
+}
 
 void cleanupVm(Vm_t *vm) {
     if (!vm) return;
     free(vm->stack);
+    if (!vm->externalStorage) {
+        free(vm->globals);
+    }
 }
 
 Object_t* vmStackTop(Vm_t *vm) {
@@ -114,6 +134,14 @@ VmError_t vmRun(Vm_t *vm) {
             
             case OP_JUMP_NOT_TRUTHY:
                 err = vmExecuteOpJumpNotTruthy(vm, &ip);
+                break;
+
+            case OP_SET_GLOBAL:
+                err = vmExecuteOpSetGlobal(vm, &ip);
+                break;
+        
+            case OP_GET_GLOBAL:
+                err = vmExecuteOpGetGlobal(vm, &ip);
                 break;
             
             default:
@@ -288,6 +316,21 @@ static Object_t* vmPop(Vm_t* vm) {
     return obj;
 }
 
+static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip) {
+    uint16_t globalIndex = readUint16BigEndian(&(vm->instructions[*ip + 1]));
+    *ip += 2;
+
+    vm->globals[globalIndex] = vmPop(vm); 
+    return VM_NO_ERROR;
+}
+
+static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip) {
+    uint16_t globalIndex = readUint16BigEndian(&(vm->instructions[*ip + 1]));
+    *ip += 2;
+
+    return vmPush(vm, vm->globals[globalIndex]);
+}
+
 static bool vmIsTruthy(Object_t* obj) {
     switch(obj->type) {
         case OBJECT_BOOLEAN:
@@ -297,4 +340,8 @@ static bool vmIsTruthy(Object_t* obj) {
         default:
             return true;
     }
+}
+
+static uint16_t readUint16BigEndian(uint8_t* ptr) {
+    return (ptr[0] << 8) | ptr[1];
 }

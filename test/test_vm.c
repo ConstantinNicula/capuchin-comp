@@ -166,11 +166,23 @@ void testConditionals() {
     runVmTest(vmTestCases, numTestCases);
 }
 
+void testGlobalLetStatements() {
+    TestCase_t vmTestCases[] = {
+        {"let one = 1; one", _INT(1)},
+        {"let one = 1; let two = 2; one + two", _INT(3)},
+        {"let one = 1; let two = one + one; one + two", _INT(3)},
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
 // not needed when using generate_test_runner.rb
 int main(void) {
    UNITY_BEGIN();
    RUN_TEST(testIntegerArithmetic);
    RUN_TEST(testBooleanExpressions);
    RUN_TEST(testConditionals);
+   RUN_TEST(testGlobalLetStatements);
    return UNITY_END();
 }

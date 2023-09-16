@@ -24,7 +24,7 @@ typedef struct SymbolTable {
     uint32_t numDefinitions; 
 } SymbolTable_t;
 
-SymbolTable_t createSymbolTable();
+SymbolTable_t* createSymbolTable();
 void cleanupSymbolTable(SymbolTable_t* symTable);
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name);

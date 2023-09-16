@@ -6,6 +6,16 @@ Compiler_t createCompiler() {
         .instructions = createSliceByte(0),
         .constants = createVectorObjects(),
         .symbolTable = createSymbolTable(),
+        .externalStorage = false,
+    };
+}
+
+Compiler_t createCompilerWithState(SymbolTable_t* s) {
+    return (Compiler_t) {
+        .instructions = createSliceByte(0),
+        .constants = createVectorObjects(),
+        .symbolTable = s,
+        .externalStorage = true,
     };
 }
 
@@ -14,8 +24,10 @@ void cleanupCompiler(Compiler_t* comp) {
     cleanupSliceByte(comp->instructions);
     // Objects are GC'd no need for cleanup function
     cleanupVectorObjects(&comp->constants, NULL); 
-    // cleanup symtable 
-    cleanupSymbolTable(&comp->symbolTable);
+    // cleanup symtable only if owned 
+    if (!comp->externalStorage) {
+        cleanupSymbolTable(comp->symbolTable);
+    }
     // Stack allocated no need for free :) 
 }
 
@@ -41,7 +53,6 @@ static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, BooleanLitera
 static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpression_t* prefix); 
 static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t* expression);
 static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident); 
-
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
 static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, const int operands[]);
 static uint32_t compilerAddInstruction(Compiler_t* comp, SliceByte_t ins); 
@@ -71,20 +82,21 @@ CompError_t compilerCompileProgram(Compiler_t* comp, Program_t* program) {
 
 
 CompError_t compilerCompileStatement(Compiler_t* comp, Statement_t* statement) {
+    CompError_t err = COMP_NO_ERROR;
     switch(statement->type) {
         case STATEMENT_EXPRESSION: 
-            compilerCompileExpressionStatement(comp, (ExpressionStatement_t*) statement);
+            err = compilerCompileExpressionStatement(comp, (ExpressionStatement_t*) statement);
             break;
         case STATEMENT_BLOCK: 
-            compilerCompileBlockStatement(comp, (BlockStatement_t*) statement);
+            err = compilerCompileBlockStatement(comp, (BlockStatement_t*) statement);
             break;
         case STATEMENT_LET:
-            compilerCompileLetStatement(comp, (LetStatement_t*) statement);
+            err = compilerCompileLetStatement(comp, (LetStatement_t*) statement);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled statement type"); 
     }
-    return COMP_NO_ERROR;
+    return err;
 }
 
 
@@ -119,7 +131,7 @@ static CompError_t compilerCompileLetStatement(Compiler_t* comp, LetStatement_t*
         return err;
     }
 
-    Symbol_t* symbol = symbolTableDefine(&comp->symbolTable, statement->name->value);
+    Symbol_t* symbol = symbolTableDefine(comp->symbolTable, statement->name->value);
     compilerEmit(comp, OP_SET_GLOBAL, (const int[]) {symbol->index});    
 
 
@@ -293,7 +305,7 @@ static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t*
 }
 
 static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident) {
-    Symbol_t* symbol = symbolTableResolve(&comp->symbolTable, ident->value);
+    Symbol_t* symbol = symbolTableResolve(comp->symbolTable, ident->value);
     if (!symbol) return COMP_UNDEFINED_VARIABLE;
     compilerEmit(comp, OP_GET_GLOBAL, (const int[]){symbol->index});
     return COMP_NO_ERROR;

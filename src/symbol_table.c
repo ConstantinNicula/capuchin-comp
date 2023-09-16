@@ -27,11 +27,13 @@ void cleanupSymbol(Symbol_t** sym) {
     *sym = NULL;
 }
 
-SymbolTable_t createSymbolTable() {
-    return (SymbolTable_t) {
+SymbolTable_t* createSymbolTable() {
+    SymbolTable_t* symTable = mallocChk(sizeof(symTable));
+    *symTable = (SymbolTable_t) {
         .store = createHashMap(),
         .numDefinitions = 0
     };
+    return symTable;
 }
 
 void cleanupSymbolTable(SymbolTable_t* symTable) {

@@ -17,7 +17,8 @@ typedef struct Compiler {
     Instructions_t instructions;
     VectorObjects_t* constants; 
 
-    SymbolTable_t symbolTable;
+    bool externalStorage; 
+    SymbolTable_t* symbolTable;
 
     EmittedInstruction_t lastInstruction;
     EmittedInstruction_t previousInstruction;
@@ -36,6 +37,7 @@ typedef struct Bytecode {
 
 
 Compiler_t createCompiler(); 
+Compiler_t createCompilerWithState(SymbolTable_t* s); 
 void cleanupCompiler(Compiler_t* comp); 
 
 CompError_t compilerCompile(Compiler_t* comp, Program_t* program); 
