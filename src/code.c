@@ -30,6 +30,9 @@ static OpDefinition_t definitions[_OP_COUNT] = {
     [OP_JUMP_NOT_TRUTHY] = {"OpJumpNotTruthy", .argCount=1, .argWidths={2}},
     [OP_JUMP] = {"OpJump", .argCount=1, .argWidths={2}},
 
+    [OP_GET_GLOBAL] = {"OpGetGlobal", .argCount=1, .argWidths={2}},
+    [OP_SET_GLOBAL] = {"OpSetGlobal", .argCount=1, .argWidths={2}},
+
     [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };
 

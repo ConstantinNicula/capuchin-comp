@@ -6,6 +6,7 @@
 #include "slice.h"
 #include "code.h"
 #include "vector.h"
+#include "symbol_table.h"
 
 typedef struct EmittedInstruction {
     OpCode_t opcode;
@@ -16,13 +17,16 @@ typedef struct Compiler {
     Instructions_t instructions;
     VectorObjects_t* constants; 
 
+    SymbolTable_t symbolTable;
+
     EmittedInstruction_t lastInstruction;
     EmittedInstruction_t previousInstruction;
 } Compiler_t;
 
 typedef enum CompError {
     COMP_NO_ERROR = 0,
-    COMP_UNKNOWN_OPERATOR, 
+    COMP_UNKNOWN_OPERATOR,
+    COMP_UNDEFINED_VARIABLE,
 } CompError_t;
 
 typedef struct Bytecode {

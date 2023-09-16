@@ -199,6 +199,8 @@ void testCompilerBasic() {
     runCompilerTests(testCases, numTestCases);
 }
 
+
+
 void testConditionals() {
 
     TestCase_t testCases[] = {
@@ -234,6 +236,54 @@ void testConditionals() {
         },
         
     };
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
+
+void testGlobalLetStatements() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "let one = 1;"
+                    "let two = 2;",
+            .expConstants ={_INT(1), _INT(2), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_SET_GLOBAL, 1),
+                NULL,
+            }
+        },
+        {
+            .input = "let one = 1;"
+                    "one;",
+            .expConstants ={_INT(1), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0),
+                codeMakeV(OP_POP),
+                NULL,
+            }
+        },
+        {
+            .input = "let one = 1;"
+                    "let two = one;"
+                    "two;",
+            .expConstants ={_INT(1), _END()},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0),
+                codeMakeV(OP_SET_GLOBAL, 1),
+                codeMakeV(OP_GET_GLOBAL, 1),
+                codeMakeV(OP_POP),
+                NULL,
+            }
+        }
+    };
+
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
     runCompilerTests(testCases, numTestCases);
 }
@@ -329,5 +379,6 @@ int main(void) {
    UNITY_BEGIN();
    RUN_TEST(testCompilerBasic);
    RUN_TEST(testConditionals);
+   RUN_TEST(testGlobalLetStatements);
    return UNITY_END();
 }

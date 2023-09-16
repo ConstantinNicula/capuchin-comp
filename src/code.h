@@ -26,6 +26,9 @@ typedef enum OpCode {
     OP_JUMP_NOT_TRUTHY,
     OP_JUMP,
 
+    OP_GET_GLOBAL,
+    OP_SET_GLOBAL,
+    
     OP_POP,
     _OP_COUNT,
 } OpCode_t;

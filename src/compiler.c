@@ -5,14 +5,17 @@ Compiler_t createCompiler() {
     return (Compiler_t) {
         .instructions = createSliceByte(0),
         .constants = createVectorObjects(),
+        .symbolTable = createSymbolTable(),
     };
 }
 
 void cleanupCompiler(Compiler_t* comp) {
     if(!comp) return;
     cleanupSliceByte(comp->instructions);
-    // Objects are GC'd no need for clenaup function
+    // Objects are GC'd no need for cleanup function
     cleanupVectorObjects(&comp->constants, NULL); 
+    // cleanup symtable 
+    cleanupSymbolTable(&comp->symbolTable);
     // Stack allocated no need for free :) 
 }
 
@@ -29,6 +32,7 @@ static CompError_t compilerCompileProgram(Compiler_t* comp, Program_t* program);
 static CompError_t compilerCompileStatement(Compiler_t* comp, Statement_t* statement);
 static CompError_t compilerCompileExpressionStatement(Compiler_t* comp, ExpressionStatement_t* statement);
 static CompError_t compilerCompileBlockStatement(Compiler_t* comp, BlockStatement_t* statement);
+static CompError_t compilerCompileLetStatement(Compiler_t* comp, LetStatement_t* statement); 
 
 static CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression);
 static CompError_t compilerCompileInfixExpression(Compiler_t* comp, InfixExpression_t* expression); 
@@ -36,6 +40,7 @@ static CompError_t compilerCompileIntegerLiteral(Compiler_t* comp, IntegerLitera
 static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, BooleanLiteral_t* expression);
 static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpression_t* prefix); 
 static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t* expression);
+static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident); 
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
 static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, const int operands[]);
@@ -73,6 +78,9 @@ CompError_t compilerCompileStatement(Compiler_t* comp, Statement_t* statement) {
         case STATEMENT_BLOCK: 
             compilerCompileBlockStatement(comp, (BlockStatement_t*) statement);
             break;
+        case STATEMENT_LET:
+            compilerCompileLetStatement(comp, (LetStatement_t*) statement);
+            break;
         default: 
             assert(0 && "Unreachable: Unhandled statement type"); 
     }
@@ -105,6 +113,18 @@ static CompError_t compilerCompileBlockStatement(Compiler_t* comp, BlockStatemen
     return COMP_NO_ERROR;
 }
 
+static CompError_t compilerCompileLetStatement(Compiler_t* comp, LetStatement_t* statement) {
+    CompError_t err = compilerCompileExpression(comp, statement->value);
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+
+    Symbol_t* symbol = symbolTableDefine(&comp->symbolTable, statement->name->value);
+    compilerEmit(comp, OP_SET_GLOBAL, (const int[]) {symbol->index});    
+
+
+    return COMP_NO_ERROR;
+}
 
 CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression) {
     CompError_t err = COMP_NO_ERROR;
@@ -124,6 +144,9 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
             break;
         case EXPRESSION_IF_EXPRESSION:
             err = compilerCompileIfExpression(comp, (IfExpression_t*) expression);
+            break;
+        case EXPRESSION_IDENTIFIER:
+            err = compilerCompileIdentifier(comp, (Identifier_t*) expression);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
@@ -268,6 +291,14 @@ static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t*
 
     return COMP_NO_ERROR;
 }
+
+static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident) {
+    Symbol_t* symbol = symbolTableResolve(&comp->symbolTable, ident->value);
+    if (!symbol) return COMP_UNDEFINED_VARIABLE;
+    compilerEmit(comp, OP_GET_GLOBAL, (const int[]){symbol->index});
+    return COMP_NO_ERROR;
+}
+
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj) {
     // TO DO GC add external ref :)

@@ -280,14 +280,13 @@ static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip) {
 
 static VmError_t vmExecuteOpNull(Vm_t* vm) {
     return vmPush(vm, (Object_t*) &Null);
-} 
+}
 
 static Object_t* vmPop(Vm_t* vm) {
     Object_t* obj = vm->stack[vm->sp-1]; 
     vm->sp--;
     return obj;
 }
-
 
 static bool vmIsTruthy(Object_t* obj) {
     switch(obj->type) {
