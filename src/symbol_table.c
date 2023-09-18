@@ -28,7 +28,7 @@ void cleanupSymbol(Symbol_t** sym) {
 }
 
 SymbolTable_t* createSymbolTable() {
-    SymbolTable_t* symTable = mallocChk(sizeof(symTable));
+    SymbolTable_t* symTable = mallocChk(sizeof(SymbolTable_t));
     *symTable = (SymbolTable_t) {
         .store = createHashMap(),
         .numDefinitions = 0
@@ -39,6 +39,7 @@ SymbolTable_t* createSymbolTable() {
 void cleanupSymbolTable(SymbolTable_t* symTable) {
     if (symTable == NULL) return;
     cleanupHashMap(&(symTable->store), (HashMapElemCleanupFn_t) cleanupSymbol);
+    free(symTable);
 }
 
 

@@ -53,6 +53,8 @@ static CompError_t compilerCompileBooleanLiteral(Compiler_t* comp, BooleanLitera
 static CompError_t compilerCompilePrefixExpression(Compiler_t* comp, PrefixExpression_t* prefix); 
 static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t* expression);
 static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident); 
+static CompError_t compilerCompileStringLiteral(Compiler_t* comp, StringLiteral_t* strLit); 
+
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
 static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, const int operands[]);
 static uint32_t compilerAddInstruction(Compiler_t* comp, SliceByte_t ins); 
@@ -159,6 +161,9 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
             break;
         case EXPRESSION_IDENTIFIER:
             err = compilerCompileIdentifier(comp, (Identifier_t*) expression);
+            break;
+        case EXPRESSION_STRING_LITERAL:
+            err = compilerCompileStringLiteral(comp, (StringLiteral_t*) expression);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
@@ -311,6 +316,12 @@ static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ide
     return COMP_NO_ERROR;
 }
 
+static CompError_t compilerCompileStringLiteral(Compiler_t* comp, StringLiteral_t* strLit) {
+    String_t* str = createString(strLit->value);
+    int constIdx = compilerAddConstant(comp, (Object_t*)str);
+    compilerEmit(comp, OP_CONSTANT, (const int[]){constIdx});
+    return COMP_NO_ERROR;
+}
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj) {
     // TO DO GC add external ref :)
@@ -323,7 +334,6 @@ static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op,const int operands[])
     SliceByte_t ins = codeMake(op, operands);
     uint32_t pos = compilerAddInstruction(comp, ins);
     compilerSetLastInstruction(comp, op, pos);
-
     cleanupSliceByte(ins);
     return pos;
 }

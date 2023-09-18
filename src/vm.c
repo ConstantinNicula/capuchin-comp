@@ -1,9 +1,11 @@
 #include "vm.h"
 #include "utils.h"
+#include "gc.h"
 
 static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip); 
 static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op);
 static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_t* left, Integer_t* right); 
+static VmError_t vmExecuteBinaryStringOperation(Vm_t *vm, OpCode_t op, String_t* left, String_t* right); 
 static VmError_t vmExecuteOpBoolean(Vm_t* vm, OpCode_t op); 
 static VmError_t vmExecuteOpNull(Vm_t* vm); 
 
@@ -69,6 +71,7 @@ void cleanupVm(Vm_t *vm) {
     if (!vm) return;
     free(vm->stack);
     if (!vm->externalStorage) {
+        
         free(vm->globals);
     }
 }
@@ -172,6 +175,10 @@ static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op) {
         return vmExecuteBinaryIntegerOperation(vm, op, (Integer_t*)left, (Integer_t*)right);
     }
 
+    if (left->type == OBJECT_STRING && right->type == OBJECT_STRING) {
+        return vmExecuteBinaryStringOperation(vm, op, (String_t*)left, (String_t*)right);
+    }
+
     return VM_UNSUPPORTED_TYPES; 
 }
 
@@ -198,6 +205,17 @@ static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_
     }
 
     return vmPush(vm, (Object_t*)createInteger(result));
+}
+
+static VmError_t vmExecuteBinaryStringOperation(Vm_t *vm, OpCode_t op, String_t* left, String_t* right) {
+    if (op != OP_ADD) {
+        return VM_UNSUPPORTED_OPERATOR;
+    }
+
+    char* concatStr = strFormat("%s%s", left->value, right->value);
+    String_t* strObj = createString(concatStr);
+    free(concatStr);
+    return vmPush(vm, (Object_t*) strObj);
 }
 
 static VmError_t vmExecuteComparison(Vm_t* vm, OpCode_t op) {
@@ -320,7 +338,10 @@ static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip) {
     uint16_t globalIndex = readUint16BigEndian(&(vm->instructions[*ip + 1]));
     *ip += 2;
 
-    vm->globals[globalIndex] = vmPop(vm); 
+    vm->globals[globalIndex] = vmPop(vm);
+    
+    // add external ref to all global objects
+    gcGetExtRef(vm->globals[globalIndex]);
     return VM_NO_ERROR;
 }
 

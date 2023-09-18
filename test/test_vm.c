@@ -25,6 +25,7 @@ void runVmTest(TestCase_t tc[], int numTestCases);
 void testExpectedObject(GenericExpect_t *expected, Object_t* actual); 
 void testIntegerObject(int64_t expected, Object_t* obj); 
 void testBooleanObject(bool expected, Object_t* obj);
+void testStringObject(const char* expected, Object_t *obj); 
 void testNullObject(Object_t* obj);
 
 void runVmTest(TestCase_t tc[], int numTestCases) {
@@ -64,6 +65,9 @@ void testExpectedObject(GenericExpect_t *expected, Object_t* actual) {
         case EXPECT_BOOL: 
             testBooleanObject(expected->bl, actual);
             break;
+        case EXPECT_STRING: 
+            testStringObject(expected->sl, actual);
+            break;
         case EXPECT_NULL:
             testNullObject(actual);
             break;
@@ -84,6 +88,13 @@ void testBooleanObject(bool expected, Object_t* obj) {
     TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_BOOLEAN, obj->type, "Object type not OBJECT_BOOLEAN");
     Boolean_t* boolObj = (Boolean_t*) obj;
     TEST_ASSERT_EQUAL_INT_MESSAGE(expected, boolObj->value, "Object value is not correct");
+}
+
+void testStringObject(const char* expected, Object_t *obj) {
+    TEST_NOT_NULL(obj, "Object is null");
+    TEST_INT(OBJECT_STRING, obj->type, "Object type not OBJECT_STRING");
+    String_t *strObj = (String_t *)obj;
+    TEST_STRING(expected, strObj->value, "Object value is not correct");
 }
 
 void testNullObject(Object_t* obj) {
@@ -176,6 +187,18 @@ void testGlobalLetStatements() {
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
     runVmTest(vmTestCases, numTestCases);
 }
+
+void testStringExpressions() {
+    TestCase_t vmTestCases[] = {
+        {"\"monkey\"", _STRING("monkey")},
+        {"\"mon\" + \"key\"", _STRING("monkey")},
+        {"\"mon\" + \"key\" + \"banana\"", _STRING("monkeybanana")},
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
 
 // not needed when using generate_test_runner.rb
 int main(void) {
