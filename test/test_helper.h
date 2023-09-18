@@ -8,9 +8,10 @@ typedef enum {
     EXPECT_BOOL, 
     EXPECT_STRING,
     EXPECT_NULL, 
-
+    EXPECT_ARRAY,
     EXPECT_END,
 } ExpectType_t;
+
 
 typedef struct GenericExpect {
     ExpectType_t type;
@@ -18,14 +19,17 @@ typedef struct GenericExpect {
         int64_t il;
         bool bl;
         const char* sl;
+        struct GenericExpect *al;
     };
 }GenericExpect_t;
+
 
 #define _BOOL(x) (GenericExpect_t){.type=EXPECT_BOOL, .bl=(x)}
 #define _INT(x) (GenericExpect_t){.type=EXPECT_INTEGER, .il=(x)}
 #define _STRING(x) (GenericExpect_t){.type=EXPECT_STRING, .sl=(x)}
+#define _ARRAY(...) (GenericExpect_t){.type=EXPECT_ARRAY, .al=(GenericExpect_t[]){__VA_ARGS__}}
 #define _NIL (GenericExpect_t){.type=EXPECT_NULL}
-#define _END(GenericExpect_t) {.type=EXPECT_END}
+#define _END (GenericExpect_t){.type=EXPECT_END}
 
 #define TEST_INT(expected, actual, message)\
     TEST_ASSERT_EQUAL_INT_MESSAGE(expected, actual, message)

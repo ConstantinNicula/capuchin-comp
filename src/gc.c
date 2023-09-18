@@ -111,7 +111,6 @@ void gcFreeExtRef(void* ptr) {
         exit(1);
     }
     clearBit(header, EXTERNAL_REF_BIT);
-    gcForceRun();
 }
 
 void gcForceRun() {

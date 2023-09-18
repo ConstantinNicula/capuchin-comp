@@ -36,78 +36,123 @@ void testStringObject(const char* str, Object_t *obj);
 
 void cleanupInstructions(Instructions_t instr[]);
 
-void testCompilerBasic()
-{
+void testCompilerBasic() {
     TestCase_t testCases[] = {
         {.input = "1 + 2",
-         .expConstants = {_INT(1), _INT(2), _END()},
+         .expConstants = {_INT(1), _INT(2), _END},
          .expInstructions = {
              codeMakeV(OP_CONSTANT, 0),
              codeMakeV(OP_CONSTANT, 1),
              codeMakeV(OP_ADD),
              codeMakeV(OP_POP),
              NULL}},
-        {.input = "1; 2", .expConstants = {_INT(1), _INT(2), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_POP), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_POP), NULL}},
-        {.input = "1 - 2", .expConstants = {_INT(1), _INT(2), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_SUB), codeMakeV(OP_POP), NULL}},
-        {.input = "1 * 2", .expConstants = {_INT(1), _INT(2), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_MUL), codeMakeV(OP_POP), NULL}},
-        {.input = "2 / 1", .expConstants = {_INT(2), _INT(1), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_DIV), codeMakeV(OP_POP), NULL}},
-        {.input = "true", .expConstants = {_END()}, .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_POP), NULL}},
-        {.input = "false", .expConstants = {_END()}, .expInstructions = {codeMakeV(OP_FALSE), codeMakeV(OP_POP), NULL}},
-        {.input = "1 > 2", .expConstants = {_INT(1), _INT(2), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}},
-        {.input = "1 < 2", .expConstants = {_INT(2), _INT(1), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}},
-        {.input = "1 == 2", .expConstants = {_INT(1), _INT(2), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}},
-        {.input = "1 != 2", .expConstants = {_INT(1), _INT(2), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}},
-        {.input = "true == false", .expConstants = {_END()}, .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}},
-        {.input = "true != false", .expConstants = {_END()}, .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}},
-        {.input = "-1", .expConstants = {_INT(1), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_MINUS), codeMakeV(OP_POP), NULL}},
-        {.input = "!true", .expConstants = {_END()}, .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_BANG), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1; 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_POP), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1 - 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_SUB), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1 * 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_MUL), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "2 / 1",
+            .expConstants = {_INT(2), _INT(1), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_DIV), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "true",
+            .expConstants = {_END},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "false",
+            .expConstants = {_END},
+            .expInstructions = {codeMakeV(OP_FALSE), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1 > 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1 < 2",
+            .expConstants = {_INT(2), _INT(1), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1 == 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "1 != 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "true == false",
+            .expConstants = {_END},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "true != false",
+            .expConstants = {_END},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "-1",
+            .expConstants = {_INT(1), _END},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_MINUS), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "!true",
+            .expConstants = {_END},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_BANG), codeMakeV(OP_POP), NULL}
+        },
     };
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
 
     runCompilerTests(testCases, numTestCases);
 }
 
-void testConditionals()
-{
+void testConditionals() {
 
     TestCase_t testCases[] = {
-        {.input = "if (true) {10}; 3333;",
-         .expConstants = {_INT(10), _INT(3333), _END()},
-         .expInstructions = {
-             codeMakeV(OP_TRUE),
-             codeMakeV(OP_JUMP_NOT_TRUTHY, 10),
-             codeMakeV(OP_CONSTANT, 0),
-             codeMakeV(OP_JUMP, 11),
-             codeMakeV(OP_NULL),
-             codeMakeV(OP_POP),
-             codeMakeV(OP_CONSTANT, 1),
-             codeMakeV(OP_POP),
-             NULL,
-         }},
-        {.input = "if (true) {10} else {20}; 3333;", .expConstants = {_INT(10), _INT(20), _INT(3333), _END()}, .expInstructions = {
-                                                                                                                   codeMakeV(OP_TRUE),
-                                                                                                                   codeMakeV(OP_JUMP_NOT_TRUTHY, 10),
-                                                                                                                   codeMakeV(OP_CONSTANT, 0),
-                                                                                                                   codeMakeV(OP_JUMP, 13),
-                                                                                                                   codeMakeV(OP_CONSTANT, 1),
-                                                                                                                   codeMakeV(OP_POP),
-                                                                                                                   codeMakeV(OP_CONSTANT, 2),
-                                                                                                                   codeMakeV(OP_POP),
-                                                                                                                   NULL,
-                                                                                                               }},
+        {
+            .input = "if (true) {10}; 3333;",
+            .expConstants = {_INT(10), _INT(3333), _END},
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_JUMP_NOT_TRUTHY, 10),
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_JUMP, 11),
+                codeMakeV(OP_NULL),
+                codeMakeV(OP_POP),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_POP),
+                NULL,
+            }
+        },
+        {
+            .input = "if (true) {10} else {20}; 3333;", 
+            .expConstants = {_INT(10), _INT(20), _INT(3333), _END}, 
+            .expInstructions = {
+                codeMakeV(OP_TRUE),
+                codeMakeV(OP_JUMP_NOT_TRUTHY, 10),
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_JUMP, 13),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_POP),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_POP),
+                NULL,
+            }},
 
     };
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
     runCompilerTests(testCases, numTestCases);
 }
 
-void testGlobalLetStatements()
-{
+void testGlobalLetStatements() {
 
     TestCase_t testCases[] = {
         {.input = "let one = 1;"
                   "let two = 2;",
-         .expConstants = {_INT(1), _INT(2), _END()},
+         .expConstants = {_INT(1), _INT(2), _END},
          .expInstructions = {
              codeMakeV(OP_CONSTANT, 0),
              codeMakeV(OP_SET_GLOBAL, 0),
@@ -117,7 +162,7 @@ void testGlobalLetStatements()
          }},
         {.input = "let one = 1;"
                   "one;",
-         .expConstants = {_INT(1), _END()},
+         .expConstants = {_INT(1), _END},
          .expInstructions = {
              codeMakeV(OP_CONSTANT, 0),
              codeMakeV(OP_SET_GLOBAL, 0),
@@ -128,7 +173,7 @@ void testGlobalLetStatements()
         {.input = "let one = 1;"
                   "let two = one;"
                   "two;",
-         .expConstants = {_INT(1), _END()},
+         .expConstants = {_INT(1), _END},
          .expInstructions = {
              codeMakeV(OP_CONSTANT, 0),
              codeMakeV(OP_SET_GLOBAL, 0),
@@ -143,17 +188,83 @@ void testGlobalLetStatements()
     runCompilerTests(testCases, numTestCases);
 }
 
-void testStringExpressions()
-{
+void testStringExpressions() {
 
     TestCase_t testCases[] = {
-        {.input = "\"monkey\"",
-         .expConstants = {_STRING("monkey"), _END()},
-         .expInstructions = {
-             codeMakeV(OP_CONSTANT, 0),
-             codeMakeV(OP_POP),
-             NULL}},
-        {.input = "\"mon\" + \"key\"", .expConstants = {_STRING("mon"), _STRING("key"), _END()}, .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_ADD), codeMakeV(OP_POP), NULL}},
+        {
+            .input = "\"monkey\"",
+            .expConstants = {_STRING("monkey"), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_POP),
+                NULL}
+        },
+        {
+            .input = "\"mon\" + \"key\"", 
+            .expConstants = {
+                _STRING("mon"), 
+                _STRING("key"), 
+                _END
+            }, 
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0), 
+                codeMakeV(OP_CONSTANT, 1), 
+                codeMakeV(OP_ADD), 
+                codeMakeV(OP_POP), 
+            NULL
+            }
+        },
+    };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
+
+void testArrayLiterals() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "[]",
+            .expConstants = {_END},
+            .expInstructions = {
+                codeMakeV(OP_ARRAY, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "[1, 2, 3]",
+            .expConstants = {_INT(1), _INT(2),_INT(3),_END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_ARRAY, 3),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "[1 + 2, 3 - 4, 5 * 6]",
+            .expConstants = {_INT(1), _INT(2),_INT(3), _INT(4), _INT(5), _INT(6), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_ADD),
+
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CONSTANT, 3),
+                codeMakeV(OP_SUB),
+
+                codeMakeV(OP_CONSTANT, 4),
+                codeMakeV(OP_CONSTANT, 5),
+                codeMakeV(OP_MUL),
+
+                codeMakeV(OP_ARRAY, 3),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        }
     };
 
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
@@ -275,5 +386,6 @@ int main(void)
     RUN_TEST(testConditionals);
     RUN_TEST(testGlobalLetStatements);
     RUN_TEST(testStringExpressions);
+    RUN_TEST(testArrayLiterals);
     return UNITY_END();
 }

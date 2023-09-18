@@ -52,3 +52,9 @@ void* mallocChk(size_t size) {
     if (!ptr) HANDLE_OOM();
     return ptr;
 }
+
+void* callocChk(size_t size) {
+    void* ptr = calloc(size, 1);
+    if (!ptr) HANDLE_OOM();
+    return ptr;
+}

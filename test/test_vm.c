@@ -27,6 +27,8 @@ void testIntegerObject(int64_t expected, Object_t* obj);
 void testBooleanObject(bool expected, Object_t* obj);
 void testStringObject(const char* expected, Object_t *obj); 
 void testNullObject(Object_t* obj);
+void testArrayObject(GenericExpect_t *al, Object_t* obj); 
+
 
 void runVmTest(TestCase_t tc[], int numTestCases) {
 
@@ -71,9 +73,29 @@ void testExpectedObject(GenericExpect_t *expected, Object_t* actual) {
         case EXPECT_NULL:
             testNullObject(actual);
             break;
+        case EXPECT_ARRAY:
+            testArrayObject(expected->al, actual);
+            break;
         default: 
             TEST_ABORT();
     }
+}
+
+void testArrayObject(GenericExpect_t *al, Object_t* obj) {
+    TEST_ASSERT_NOT_NULL_MESSAGE(obj, "Object is null");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_ARRAY, obj->type, "Object type not OBJECT_ARRAY");
+
+    Array_t* arrObj = (Array_t*) obj;
+    Object_t** elems = arrayGetElements(arrObj);   
+    uint32_t elemCnt = arrayGetElementCount(arrObj); 
+    uint32_t cnt = 0;
+
+    while (al && al->type != EXPECT_END && cnt < elemCnt) {
+        testExpectedObject(al, elems[cnt]);
+        al++;
+        cnt++;        
+    }
+    TEST_INT(cnt, elemCnt, "Wrong number of elements");
 }
 
 void testIntegerObject(int64_t expected, Object_t* obj) {
@@ -199,6 +221,16 @@ void testStringExpressions() {
     runVmTest(vmTestCases, numTestCases);
 }
 
+void testArrayLiterals() {
+    TestCase_t vmTestCases[] = {
+        {"[]", _ARRAY(_END)},
+        {"[1, 2, 3]", _ARRAY( _INT(1), _INT(2), _INT(3) )},
+        {"[1 + 2, 3 * 4, 5 + 6]", _ARRAY( _INT(3), _INT(12), _INT(11))},
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
 
 // not needed when using generate_test_runner.rb
 int main(void) {
@@ -207,5 +239,6 @@ int main(void) {
    RUN_TEST(testBooleanExpressions);
    RUN_TEST(testConditionals);
    RUN_TEST(testGlobalLetStatements);
+   RUN_TEST(testArrayLiterals);
    return UNITY_END();
 }

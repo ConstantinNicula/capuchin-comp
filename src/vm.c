@@ -2,6 +2,10 @@
 #include "utils.h"
 #include "gc.h"
 
+
+static void cleanupGlobals(Vm_t *vm); 
+static void cleanupStack(Vm_t* vm);
+
 static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip); 
 static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op);
 static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_t* left, Integer_t* right); 
@@ -24,6 +28,9 @@ static VmError_t vmExecuteOpPop(Vm_t* vm);
 static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip); 
 static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip); 
 
+static VmError_t vmExecuteOpArray(Vm_t* vm, uint32_t* ip); 
+Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements);
+
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
@@ -31,28 +38,15 @@ static bool vmIsTruthy(Object_t* obj);
 static Object_t* nativeBoolToBooleanObject(bool val);
 static uint16_t readUint16BigEndian(uint8_t* ptr); 
 
-static Boolean_t True = (Boolean_t) {
-    .type = OBJECT_BOOLEAN, 
-    .value = true,
-};
-
-static Boolean_t False = (Boolean_t) {
-    .type = OBJECT_BOOLEAN,
-    .value = false,
-};
-
-static Null_t Null = (Null_t) {
-    .type = OBJECT_NULL
-};
 
 Vm_t createVm(Bytecode_t* bytecode) {
     return (Vm_t) {
         .constants = bytecode->constants,
         .instructions = bytecode->instructions, 
         .sp = 0, 
-        .stack = mallocChk(STACK_SIZE * sizeof(Object_t*)),
+        .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
         .externalStorage = false,
-        .globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*)),
+        .globals = callocChk(GLOBALS_SIZE * sizeof(Object_t*)),
     };
 } 
 
@@ -61,7 +55,7 @@ Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
         .constants = bytecode->constants,
         .instructions = bytecode->instructions, 
         .sp = 0, 
-        .stack = mallocChk(STACK_SIZE * sizeof(Object_t*)),
+        .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
         .externalStorage = true,
         .globals = s,
     };
@@ -69,11 +63,28 @@ Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
 
 void cleanupVm(Vm_t *vm) {
     if (!vm) return;
-    free(vm->stack);
+
+    cleanupStack(vm);
     if (!vm->externalStorage) {
-        
-        free(vm->globals);
+        cleanupGlobals(vm); 
     }
+}
+
+static void cleanupGlobals(Vm_t *vm) {
+    uint16_t i = 0; 
+    while (vm->globals[i] != NULL && i < GLOBALS_SIZE) {
+        // TO DO: fix double free when remove constants which were pushed to stack. 
+        //gcFreeExtRef(vm->globals[i]);
+        i++;
+    }
+    free(vm->globals);
+}
+
+static void cleanupStack(Vm_t *vm) {
+    while (vm->sp) {
+        vmPop(vm);
+    }
+    free(vm->stack);
 }
 
 Object_t* vmStackTop(Vm_t *vm) {
@@ -146,7 +157,11 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_GET_GLOBAL:
                 err = vmExecuteOpGetGlobal(vm, &ip);
                 break;
-            
+
+            case OP_ARRAY:
+                err = vmExecuteOpArray(vm, &ip);
+                break;
+
             default:
                 break;
         }
@@ -159,7 +174,7 @@ VmError_t vmRun(Vm_t *vm) {
 }
 
 static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip) {
-    uint16_t constIndex = (vm->instructions[*ip+1]) << 8 | vm->instructions[*ip+2];
+    uint16_t constIndex = readUint16BigEndian(&vm->instructions[*ip + 1]);
     *ip += 2;
 
     Object_t* constObj = vectorObjectsGetBuffer(vm->constants)[constIndex]; 
@@ -249,9 +264,9 @@ static VmError_t vmExecuteIntegerComparison(Vm_t* vm, OpCode_t op, Integer_t* le
 static VmError_t vmExecuteBooleanComparison(Vm_t* vm, OpCode_t op, Boolean_t* left, Boolean_t* right) {
     switch(op) {
         case OP_EQUAL:
-            return vmPush(vm, nativeBoolToBooleanObject(left == right));
+            return vmPush(vm, nativeBoolToBooleanObject(left->value == right->value));
         case OP_NOT_EQUAL:
-            return vmPush(vm, nativeBoolToBooleanObject(left != right));
+            return vmPush(vm, nativeBoolToBooleanObject(left->value != right->value));
         default:
             return VM_UNSUPPORTED_OPERATOR; 
     }
@@ -267,7 +282,7 @@ static VmError_t vmExecuteBangOperator(Vm_t *vm) {
         case OBJECT_NULL:
             return vmPush(vm, nativeBoolToBooleanObject(true));
         default:
-            return vmPush(vm, (Object_t*) &False);
+            return vmPush(vm, nativeBoolToBooleanObject(false));
     }
 }
 
@@ -281,8 +296,33 @@ static VmError_t vmExecuteMinusOperator(Vm_t *vm) {
     return vmPush(vm, (Object_t*)createInteger(-value));
 }
 
+
+static VmError_t vmExecuteOpArray(Vm_t* vm, uint32_t* ip) {
+    uint16_t numElements = readUint16BigEndian(&vm->instructions[*ip + 1]);
+    *ip += 2;
+
+    Array_t* array = vmBuildArray(vm, numElements);
+    return vmPush(vm, (Object_t*)array);
+}
+
+Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements) {
+    // create array object using stack elements  
+    Array_t* arr = createArray();
+    arr->elements = createVectorObjects();
+    for (uint16_t i = vm->sp - numElements; i< vm->sp; i++) {
+        arrayAppend(arr, vm->stack[i]);
+    }
+
+    // remove elements from stack
+    for (uint16_t i = vm->sp-numElements; i < vm->sp; i++) {
+        vmPop(vm);
+    }
+
+    return arr; 
+}
+
 static Object_t* nativeBoolToBooleanObject(bool val) {
-    return val ? (Object_t*) &True : (Object_t*) &False;
+    return (Object_t*)createBoolean(val);
 }
 
 static VmError_t vmExecuteOpBoolean(Vm_t* vm, OpCode_t op) {
@@ -294,26 +334,15 @@ static VmError_t vmExecuteOpPop(Vm_t* vm) {
     return VM_NO_ERROR;
 }
 
-static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
-    if (vm->sp >= STACK_SIZE) {
-        return VM_STACK_OVERFLOW;
-    }
-
-    vm->stack[vm->sp] = obj;
-    vm->sp++;
-
-    return VM_NO_ERROR;
-}
-
 static VmError_t vmExecuteOpJump(Vm_t* vm, uint32_t* ip) {
-    uint16_t pos = ((vm->instructions[*ip+1]) << 8) | (vm->instructions[*ip + 2]);
+    uint16_t pos = readUint16BigEndian(&(vm->instructions[*ip + 1]));
     *ip = pos - 1;
 
     return VM_NO_ERROR; 
 }
 
 static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip) {
-    uint16_t pos = ((vm->instructions[*ip+1]) << 8) | (vm->instructions[*ip + 2]);
+    uint16_t pos = readUint16BigEndian(&(vm->instructions[*ip + 1]));
     *ip += 2;
 
     Object_t* condition = vmPop(vm);
@@ -325,23 +354,16 @@ static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip) {
 }
 
 static VmError_t vmExecuteOpNull(Vm_t* vm) {
-    return vmPush(vm, (Object_t*) &Null);
-}
-
-static Object_t* vmPop(Vm_t* vm) {
-    Object_t* obj = vm->stack[vm->sp-1]; 
-    vm->sp--;
-    return obj;
+    return vmPush(vm, (Object_t*) createNull());
 }
 
 static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip) {
     uint16_t globalIndex = readUint16BigEndian(&(vm->instructions[*ip + 1]));
     *ip += 2;
 
-    vm->globals[globalIndex] = vmPop(vm);
-    
-    // add external ref to all global objects
-    gcGetExtRef(vm->globals[globalIndex]);
+    if (vm->globals[globalIndex] != NULL)
+        gcFreeExtRef(vm->globals[globalIndex]);
+    vm->globals[globalIndex] = gcGetExtRef(vmPop(vm));
     return VM_NO_ERROR;
 }
 
@@ -350,6 +372,24 @@ static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip) {
     *ip += 2;
 
     return vmPush(vm, vm->globals[globalIndex]);
+}
+
+static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
+    if (vm->sp >= STACK_SIZE) {
+        return VM_STACK_OVERFLOW;
+    }
+    //vm->stack[vm->sp] = gcGetExtRef(obj);
+    vm->stack[vm->sp] = obj;
+    vm->sp++;
+    return VM_NO_ERROR;
+}
+
+static Object_t* vmPop(Vm_t* vm) {
+    Object_t* obj = vm->stack[vm->sp-1]; 
+    vm->sp--;
+    
+    //gcFreeExtRef(obj);
+    return obj;
 }
 
 static bool vmIsTruthy(Object_t* obj) {

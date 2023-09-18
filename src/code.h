@@ -29,6 +29,8 @@ typedef enum OpCode {
     OP_GET_GLOBAL,
     OP_SET_GLOBAL,
     
+    OP_ARRAY,
+    
     OP_POP,
     _OP_COUNT,
 } OpCode_t;

@@ -14,6 +14,8 @@ bool strToInteger(const char* str, int64_t* val);
 
 
 void* mallocChk(size_t size);
+void* callocChk(size_t size); 
+
 #define HANDLE_OOM() {\
     perror("ALLOC ERROR: Failed to allocate memory!");\
     exit(1);\
