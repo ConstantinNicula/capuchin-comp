@@ -1,6 +1,6 @@
-# capuchin-interp
+# capuchin-comp
 
-Capuchin is a compiler for the Monkey programming language, written entirely in C. The implementation is based on Thorsten Ball's followup book ['Writing A Compiler In Go'](https://https://compilerbook.com/).
+Capuchin is a compiler for the Monkey programming language, written entirely in C. The implementation is based on Thorsten Ball's followup book ['Writing A Compiler In Go'](https://compilerbook.com/).
 
 The lexer and parser implementations have been reused from ['capuchin-interp'](https://github.com/ConstantinNicula/capuchin-interp).
 

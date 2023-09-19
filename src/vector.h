@@ -7,7 +7,7 @@
 
 /*
     Use the DEFINE_VECTOR_TYPE(NAME, TYPE) in .h files to construct custom Vector 
-    for a given underlying datatype of your chosiong. Add a single IMPL_VERCTOR_TYPE(NAME, TYPE) in a .c file 
+    for a given underlying datatype of your choosing. Add a single IMPL_VECTOR_TYPE(NAME, TYPE) in a .c file 
 */
 
 #define _VEC_TYPE(NAME) Vector##NAME##_t
