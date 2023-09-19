@@ -28,7 +28,7 @@ void testBooleanObject(bool expected, Object_t* obj);
 void testStringObject(const char* expected, Object_t *obj); 
 void testNullObject(Object_t* obj);
 void testArrayObject(GenericExpect_t *al, Object_t* obj); 
-
+void testHashObject(GenericHash_t hl, Object_t* obj); 
 
 void runVmTest(TestCase_t tc[], int numTestCases) {
 
@@ -76,6 +76,9 @@ void testExpectedObject(GenericExpect_t *expected, Object_t* actual) {
         case EXPECT_ARRAY:
             testArrayObject(expected->al, actual);
             break;
+        case EXPECT_HASH: 
+            testHashObject(expected->hl, actual);
+            break; 
         default: 
             TEST_ABORT();
     }
@@ -96,6 +99,30 @@ void testArrayObject(GenericExpect_t *al, Object_t* obj) {
         cnt++;        
     }
     TEST_INT(cnt, elemCnt, "Wrong number of elements");
+}
+
+void testHashObject(GenericHash_t hl, Object_t* obj) {
+    TEST_ASSERT_NOT_NULL_MESSAGE(obj, "Object is null");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_HASH, obj->type, "Object type not OBJECT_HASH");
+    Hash_t* hashObj = (Hash_t*) obj;
+
+    // get nr of elements 
+    int cnt = 0; 
+    while (hl.keys[cnt].type != EXPECT_END) {cnt++;}
+
+    int i = 0; 
+    while (i < cnt) {
+        // TO DO: fix for generic object type. 
+        Object_t* expKeyObject = createInteger(hl.keys[i].il);
+
+        HashPair_t* pair = hashGetPair(hashObj, expKeyObject);
+        TEST_NOT_NULL(pair, "no pair found!");
+
+        testExpectedObject(&hl.values[i], pair->value);
+        testExpectedObject(&hl.keys[i], pair->key);
+        
+        i++;        
+    }
 }
 
 void testIntegerObject(int64_t expected, Object_t* obj) {
@@ -232,13 +259,31 @@ void testArrayLiterals() {
     runVmTest(vmTestCases, numTestCases);
 }
 
+void testHashLiterals() {
+    TestCase_t vmTestCases[] = {
+        {"{}", _HASH({_END}, {_END})},
+        {"{1: 2, 2: 3}", _HASH(
+            _LIT({_INT(1), _INT(2), _END}), 
+            _LIT({_INT(2), _INT(3), _END})
+        )},
+        {"{1 + 1: 2 * 2, 3 + 3: 4 * 4}", _HASH(
+            _LIT({_INT(2), _INT(6), _END}), 
+            _LIT({_INT(4), _INT(16), _END})
+        )},
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
 // not needed when using generate_test_runner.rb
 int main(void) {
-   UNITY_BEGIN();
-   RUN_TEST(testIntegerArithmetic);
-   RUN_TEST(testBooleanExpressions);
-   RUN_TEST(testConditionals);
-   RUN_TEST(testGlobalLetStatements);
-   RUN_TEST(testArrayLiterals);
-   return UNITY_END();
+    UNITY_BEGIN();
+    RUN_TEST(testIntegerArithmetic);
+    RUN_TEST(testBooleanExpressions);
+    RUN_TEST(testConditionals);
+    RUN_TEST(testGlobalLetStatements);
+    RUN_TEST(testArrayLiterals);
+    RUN_TEST(testHashLiterals);
+    return UNITY_END();
 }

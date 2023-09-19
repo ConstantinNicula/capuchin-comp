@@ -9,9 +9,17 @@ typedef enum {
     EXPECT_STRING,
     EXPECT_NULL, 
     EXPECT_ARRAY,
+    EXPECT_HASH,
     EXPECT_END,
 } ExpectType_t;
 
+
+typedef struct GenericExpect GenericExpect_t; 
+
+typedef struct GenericHash {
+    GenericExpect_t *keys;
+    GenericExpect_t *values;
+} GenericHash_t;
 
 typedef struct GenericExpect {
     ExpectType_t type;
@@ -20,6 +28,7 @@ typedef struct GenericExpect {
         bool bl;
         const char* sl;
         struct GenericExpect *al;
+        GenericHash_t hl;
     };
 }GenericExpect_t;
 
@@ -28,8 +37,11 @@ typedef struct GenericExpect {
 #define _INT(x) (GenericExpect_t){.type=EXPECT_INTEGER, .il=(x)}
 #define _STRING(x) (GenericExpect_t){.type=EXPECT_STRING, .sl=(x)}
 #define _ARRAY(...) (GenericExpect_t){.type=EXPECT_ARRAY, .al=(GenericExpect_t[]){__VA_ARGS__}}
+#define _HASH(k, v) (GenericExpect_t){.type=EXPECT_HASH, .hl=(GenericHash_t){\
+    .keys=(GenericExpect_t[])k, .values=(GenericExpect_t[])v,}}
 #define _NIL (GenericExpect_t){.type=EXPECT_NULL}
 #define _END (GenericExpect_t){.type=EXPECT_END}
+#define _LIT(...) __VA_ARGS__
 
 #define TEST_INT(expected, actual, message)\
     TEST_ASSERT_EQUAL_INT_MESSAGE(expected, actual, message)

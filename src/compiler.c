@@ -55,6 +55,7 @@ static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t*
 static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident); 
 static CompError_t compilerCompileStringLiteral(Compiler_t* comp, StringLiteral_t* strLit); 
 static CompError_t compilerCompileArrayLiteral(Compiler_t* comp, ArrayLiteral_t* arrayLit); 
+static CompError_t compilerCompileHashLiteral(Compiler_t* comp, HashLiteral_t* hashLit); 
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
 static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, const int operands[]);
@@ -168,6 +169,9 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
             break;
         case EXPRESSION_ARRAY_LITERAL:
             err = compilerCompileArrayLiteral(comp, (ArrayLiteral_t*) expression);
+            break;
+        case EXPRESSION_HASH_LITERAL: 
+            err = compilerCompileHashLiteral(comp, (HashLiteral_t*) expression);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
@@ -339,6 +343,30 @@ static CompError_t compilerCompileArrayLiteral(Compiler_t* comp, ArrayLiteral_t*
     }
 
     compilerEmit(comp, OP_ARRAY, (const int[]) {elemCnt});
+    return COMP_NO_ERROR;
+}
+
+static CompError_t compilerCompileHashLiteral(Compiler_t* comp, HashLiteral_t* hashLit) {
+    uint32_t pairsCount = hashLiteralGetPairsCount(hashLit);
+    for (uint32_t i = 0; i < pairsCount; i++) {
+        Expression_t* key = NULL;
+        Expression_t* value = NULL;
+
+        CompError_t err = COMP_NO_ERROR;
+        hashLiteralGetPair(hashLit, i, &key, &value);
+
+        err = compilerCompileExpression(comp, key);
+        if (err != COMP_NO_ERROR) {
+            return err;
+        } 
+
+        err = compilerCompileExpression(comp, value); 
+        if (err != COMP_NO_ERROR) {
+            return err;
+        } 
+    }
+    
+    compilerEmit(comp, OP_HASH, (const int[]) {2 * pairsCount});
     return COMP_NO_ERROR;
 }
 

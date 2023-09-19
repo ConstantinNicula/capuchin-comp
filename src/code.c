@@ -34,6 +34,7 @@ static OpDefinition_t definitions[_OP_COUNT] = {
     [OP_SET_GLOBAL] = {"OpSetGlobal", .argCount=1, .argWidths={2}},
 
     [OP_ARRAY] = {"OpArray", .argCount=1, .argWidths={2}},
+    [OP_HASH] = {"OpHash", .argCount=1, .argWidths={2}},
 
     [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };

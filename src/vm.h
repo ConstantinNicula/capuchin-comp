@@ -13,7 +13,8 @@ typedef enum VmError {
     VM_NO_ERROR = 0, 
     VM_STACK_OVERFLOW,
     VM_UNSUPPORTED_TYPES,
-    VM_UNSUPPORTED_OPERATOR, 
+    VM_UNSUPPORTED_OPERATOR,
+    VM_INVALID_KEY, 
 } VmError_t;
 
 typedef struct Vm {

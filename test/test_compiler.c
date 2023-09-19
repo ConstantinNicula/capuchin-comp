@@ -271,6 +271,58 @@ void testArrayLiterals() {
     runCompilerTests(testCases, numTestCases);
 }
 
+void testHashLiterals() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "{}",
+            .expConstants = {_END},
+            .expInstructions = {
+                codeMakeV(OP_HASH, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "{1: 2, 3: 4, 5: 6}",
+            .expConstants = {_INT(1), _INT(2),_INT(3), _INT(4), _INT(5), _INT(6), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CONSTANT, 3),
+                codeMakeV(OP_CONSTANT, 4),
+                codeMakeV(OP_CONSTANT, 5),
+                codeMakeV(OP_HASH, 6),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "{1: 2 + 3, 4: 5 * 6}",
+            .expConstants = {_INT(1), _INT(2),_INT(3), _INT(4), _INT(5), _INT(6), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_ADD),
+
+                codeMakeV(OP_CONSTANT, 3),
+                codeMakeV(OP_CONSTANT, 4),
+                codeMakeV(OP_CONSTANT, 5),
+                codeMakeV(OP_MUL),
+
+                codeMakeV(OP_HASH,  4),  
+                codeMakeV(OP_POP),
+                NULL
+            }
+        }
+    };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
+
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
     for (int i = 0; i < numTc; i++)
@@ -387,5 +439,6 @@ int main(void)
     RUN_TEST(testGlobalLetStatements);
     RUN_TEST(testStringExpressions);
     RUN_TEST(testArrayLiterals);
+    RUN_TEST(testHashLiterals);
     return UNITY_END();
 }

@@ -29,7 +29,10 @@ static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip);
 static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip); 
 
 static VmError_t vmExecuteOpArray(Vm_t* vm, uint32_t* ip); 
-Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements);
+static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements);
+
+static VmError_t vmExecuteOpHash(Vm_t* vm, uint32_t* ip); 
+static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements); 
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
@@ -162,6 +165,10 @@ VmError_t vmRun(Vm_t *vm) {
                 err = vmExecuteOpArray(vm, &ip);
                 break;
 
+            case OP_HASH:
+                err = vmExecuteOpHash(vm , &ip);
+                break;
+            
             default:
                 break;
         }
@@ -305,7 +312,7 @@ static VmError_t vmExecuteOpArray(Vm_t* vm, uint32_t* ip) {
     return vmPush(vm, (Object_t*)array);
 }
 
-Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements) {
+static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements) {
     // create array object using stack elements  
     Array_t* arr = createArray();
     arr->elements = createVectorObjects();
@@ -320,6 +327,37 @@ Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements) {
 
     return arr; 
 }
+
+static VmError_t vmExecuteOpHash(Vm_t* vm, uint32_t* ip) {
+    uint16_t numElements = readUint16BigEndian(&vm->instructions[*ip + 1]);
+    *ip += 2;
+
+    Hash_t* hash = vmBuildHash(vm, numElements);
+    if (!hash) {
+        return VM_INVALID_KEY;
+    }
+    return vmPush(vm, (Object_t*)hash);
+}
+
+static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements) {
+    Hash_t* hash = createHash();
+    for(uint16_t i = vm->sp - numElements; i < vm->sp; i+= 2) {
+        Object_t* key = vm->stack[i];
+        Object_t* value = vm->stack[i+1];
+
+        // check if key is hashable 
+        // FIXME: this should emit a proper error code.  
+        if (!objectIsHashable(key)) {
+            return NULL;
+        }
+
+        HashPair_t* pair = createHashPair(key, value);
+        hashInsertPair(hash, pair);
+    }
+
+    return hash;
+}
+
 
 static Object_t* nativeBoolToBooleanObject(bool val) {
     return (Object_t*)createBoolean(val);
