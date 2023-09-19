@@ -34,6 +34,10 @@ static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements);
 static VmError_t vmExecuteOpHash(Vm_t* vm, uint32_t* ip); 
 static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements); 
 
+static VmError_t vmExecuteOpIndex(Vm_t* vm); 
+static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index);
+static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index); 
+
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
@@ -166,6 +170,10 @@ VmError_t vmRun(Vm_t *vm) {
 
             case OP_HASH:
                 err = vmExecuteOpHash(vm , &ip);
+                break;
+
+            case OP_INDEX:
+                err = vmExecuteOpIndex(vm);
                 break;
             
             default:
@@ -355,6 +363,44 @@ static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements) {
     }
 
     return hash;
+}
+
+static VmError_t vmExecuteOpIndex(Vm_t* vm) {
+    Object_t* index = vmPop(vm);
+    Object_t* left = vmPop(vm);
+
+    if (left->type == OBJECT_ARRAY && index->type == OBJECT_INTEGER) {
+        return vmExecuteArrayIndex(vm, (Array_t*)left, (Integer_t*)index);
+    } else if (left->type == OBJECT_HASH) {
+        return vmExecuteHashIndex(vm, (Hash_t*)left, index);
+    }
+
+    return VM_UNSUPPORTED_TYPES; 
+}
+
+static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index) {
+    uint32_t max = arrayGetElementCount(array);
+    int64_t i = index->value;
+
+    if (i < 0 || i >= max) {
+        return vmPush(vm, (Object_t*) createNull());
+    }
+
+    Object_t** elems = arrayGetElements(array);
+    return vmPush(vm, elems[i]);
+}
+
+static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index) {
+    if (!objectIsHashable(index)) {
+        return VM_INVALID_KEY;
+    }
+
+    HashPair_t* pair = hashGetPair(hash, index);
+    if (!pair) {
+        return vmPush(vm, (Object_t*) createNull());
+    }
+
+    return vmPush(vm, pair->value);
 }
 
 

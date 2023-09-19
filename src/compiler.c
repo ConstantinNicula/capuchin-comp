@@ -56,6 +56,7 @@ static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ide
 static CompError_t compilerCompileStringLiteral(Compiler_t* comp, StringLiteral_t* strLit); 
 static CompError_t compilerCompileArrayLiteral(Compiler_t* comp, ArrayLiteral_t* arrayLit); 
 static CompError_t compilerCompileHashLiteral(Compiler_t* comp, HashLiteral_t* hashLit); 
+static CompError_t compilerCompileIndexExpression(Compiler_t* comp, IndexExpression_t* indExpr);
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
 static uint32_t compilerEmit(Compiler_t* comp, OpCode_t op, const int operands[]);
@@ -172,6 +173,9 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
             break;
         case EXPRESSION_HASH_LITERAL: 
             err = compilerCompileHashLiteral(comp, (HashLiteral_t*) expression);
+            break;
+        case EXPRESSION_INDEX_EXPRESSION:
+            err = compilerCompileIndexExpression(comp, (IndexExpression_t*)expression);
             break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
@@ -367,6 +371,22 @@ static CompError_t compilerCompileHashLiteral(Compiler_t* comp, HashLiteral_t* h
     }
     
     compilerEmit(comp, OP_HASH, (const int[]) {2 * pairsCount});
+    return COMP_NO_ERROR;
+}
+
+static CompError_t compilerCompileIndexExpression(Compiler_t* comp, IndexExpression_t* indExpr) {
+    CompError_t err = compilerCompileExpression(comp, indExpr->left);
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+
+    err = compilerCompileExpression(comp, indExpr->right);
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+
+    compilerEmit(comp, OP_INDEX, NULL);
+
     return COMP_NO_ERROR;
 }
 

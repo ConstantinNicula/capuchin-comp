@@ -276,6 +276,24 @@ void testHashLiterals() {
     runVmTest(vmTestCases, numTestCases);
 }
 
+void testIndexExpression() {
+    TestCase_t vmTestCases[] = {
+        {"[1, 2, 3][1]", _INT(2)},
+        {"[1, 2, 3][0 + 2]", _INT(3)},
+        {"[[1, 1, 1]][0][0]", _INT(1)},
+        {"[][0]", _NIL},
+        {"[1, 2, 3][99]", _NIL},
+        {"[1][-1]", _NIL},
+        {"{1: 1, 2: 2}[1]", _INT(1)},
+        {"{1: 1, 2: 2}[2]", _INT(2)},
+        {"{1: 1}[0]", _NIL},
+        {"{}[0]", _NIL},
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
 // not needed when using generate_test_runner.rb
 int main(void) {
     UNITY_BEGIN();
@@ -285,5 +303,6 @@ int main(void) {
     RUN_TEST(testGlobalLetStatements);
     RUN_TEST(testArrayLiterals);
     RUN_TEST(testHashLiterals);
+    RUN_TEST(testIndexExpression);
     return UNITY_END();
 }

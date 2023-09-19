@@ -31,7 +31,8 @@ typedef enum OpCode {
     
     OP_ARRAY,
     OP_HASH,
-    
+    OP_INDEX, 
+
     OP_POP,
     _OP_COUNT,
 } OpCode_t;

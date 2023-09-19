@@ -323,6 +323,49 @@ void testHashLiterals() {
     runCompilerTests(testCases, numTestCases);
 }
 
+void testIndexExpressions() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "[1, 2, 3][1 + 1]",
+            .expConstants = {_INT(1), _INT(2),_INT(3),_INT(1),_INT(1), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0), 
+                codeMakeV(OP_CONSTANT, 1), 
+                codeMakeV(OP_CONSTANT, 2), 
+                codeMakeV(OP_ARRAY, 3), 
+                codeMakeV(OP_CONSTANT, 3), 
+                codeMakeV(OP_CONSTANT, 4), 
+                codeMakeV(OP_ADD, 0),
+                codeMakeV(OP_INDEX),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "{1: 2}[2 - 1]",
+            .expConstants = {_INT(1), _INT(2), _INT(2), _INT(1), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_HASH, 2),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CONSTANT, 3),
+                codeMakeV(OP_SUB),
+                codeMakeV(OP_INDEX),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        }, 
+    };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
+
+
+
+
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
     for (int i = 0; i < numTc; i++)
@@ -440,5 +483,6 @@ int main(void)
     RUN_TEST(testStringExpressions);
     RUN_TEST(testArrayLiterals);
     RUN_TEST(testHashLiterals);
+    RUN_TEST(testIndexExpressions);
     return UNITY_END();
 }
