@@ -251,8 +251,8 @@ void testStringExpressions() {
 void testArrayLiterals() {
     TestCase_t vmTestCases[] = {
         {"[]", _ARRAY(_END)},
-        {"[1, 2, 3]", _ARRAY( _INT(1), _INT(2), _INT(3) )},
-        {"[1 + 2, 3 * 4, 5 + 6]", _ARRAY( _INT(3), _INT(12), _INT(11))},
+        {"[1, 2, 3]", _ARRAY( _INT(1), _INT(2), _INT(3), _END)},
+        {"[1 + 2, 3 * 4, 5 + 6]", _ARRAY( _INT(3), _INT(12), _INT(11), _END)},
     };
 
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);

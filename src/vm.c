@@ -76,8 +76,7 @@ void cleanupVm(Vm_t *vm) {
 static void cleanupGlobals(Vm_t *vm) {
     uint16_t i = 0; 
     while (vm->globals[i] != NULL && i < GLOBALS_SIZE) {
-        // TO DO: fix double free when remove constants which were pushed to stack. 
-        //gcFreeExtRef(vm->globals[i]);
+        gcFreeExtRef(vm->globals[i]);
         i++;
     }
     free(vm->globals);
@@ -416,7 +415,6 @@ static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
     if (vm->sp >= STACK_SIZE) {
         return VM_STACK_OVERFLOW;
     }
-    //vm->stack[vm->sp] = gcGetExtRef(obj);
     vm->stack[vm->sp] = obj;
     vm->sp++;
     return VM_NO_ERROR;
@@ -426,7 +424,6 @@ static Object_t* vmPop(Vm_t* vm) {
     Object_t* obj = vm->stack[vm->sp-1]; 
     vm->sp--;
     
-    //gcFreeExtRef(obj);
     return obj;
 }
 
