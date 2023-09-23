@@ -33,8 +33,10 @@ SliceByte_t concatInstructions(SliceByte_t expected[], int num);
 void testConstants(GenericExpect_t expected[], VectorObjects_t *actual);
 void testIntegerObject(int64_t expected, Object_t *obj);
 void testStringObject(const char* str, Object_t *obj); 
-
+void testCompiledFunction(SliceByte_t intr[], Object_t*obj);
 void cleanupInstructions(Instructions_t instr[]);
+
+
 
 void testCompilerBasic() {
     TestCase_t testCases[] = {
@@ -323,6 +325,7 @@ void testHashLiterals() {
     runCompilerTests(testCases, numTestCases);
 }
 
+
 void testIndexExpressions() {
 
     TestCase_t testCases[] = {
@@ -364,7 +367,54 @@ void testIndexExpressions() {
 }
 
 
+void testFunctions() {
 
+    TestCase_t testCases[] = {
+        {
+            .input = "fn() {return 5 + 10}",
+            .expConstants = {
+                _INT(5), 
+                _INT(10),
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_CONSTANT, 1),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                )},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0), 
+                codeMakeV(OP_CONSTANT, 1), 
+                codeMakeV(OP_CONSTANT, 2), 
+                codeMakeV(OP_ARRAY, 3), 
+                codeMakeV(OP_CONSTANT, 3), 
+                codeMakeV(OP_CONSTANT, 4), 
+                codeMakeV(OP_ADD, 0),
+                codeMakeV(OP_INDEX),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "{1: 2}[2 - 1]",
+            .expConstants = {_INT(1), _INT(2), _INT(2), _INT(1), _END},
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_HASH, 2),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CONSTANT, 3),
+                codeMakeV(OP_SUB),
+                codeMakeV(OP_INDEX),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        }, 
+    };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
 
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
@@ -423,6 +473,17 @@ SliceByte_t concatInstructions(SliceByte_t expected[], int num)
     return out;
 }
 
+void cleanupInstructions(Instructions_t instr[]) 
+{
+    int num = 0;
+    while (instr[num] != NULL)
+        num++;
+    for (int i = 0; i < num; i++)
+    {
+        cleanupSliceByte(instr[i]);
+    }
+}
+
 void testConstants(GenericExpect_t expected[], VectorObjects_t *actual)
 {
     int numExpected = 0;
@@ -441,11 +502,15 @@ void testConstants(GenericExpect_t expected[], VectorObjects_t *actual)
         case EXPECT_STRING:
             testStringObject(expected[i].sl, objects[i]);
             break;
+        case EXPECT_COMPILED_FUNCTION:
+            testCompiledFunction(expected[i].fl, objects[i]);
+            break;
         default:
             TEST_ABORT();
         }
     }
 }
+
 
 void testIntegerObject(int64_t expected, Object_t *obj)
 {
@@ -462,17 +527,17 @@ void testStringObject(const char* expected, Object_t *obj) {
     TEST_STRING(expected, strObj->value, "Object value is not correct");
 }
 
-void cleanupInstructions(Instructions_t instr[])
-{
-    int num = 0;
-    while (instr[num] != NULL)
-        num++;
-    for (int i = 0; i < num; i++)
-    {
-        cleanupSliceByte(instr[i]);
-    }
-}
 
+void testCompiledFunction(SliceByte_t expInstr[], Object_t*obj) {
+    TEST_NOT_NULL(obj, "Object is null");
+    TEST_INT(OBJECT_COMPILED_FUNCTION, obj->type, "Object type not OBJECT_COMPILED_FUNCTION");
+    CompiledFunction_t *comFunc = (CompiledFunction_t *)obj;
+
+    testInstructions(expInstr, comFunc->instructions);
+
+    // expected instr no longer needed, cleanup
+    cleanupInstructions(expInstr);
+}
 // not needed when using generate_test_runner.rb
 int main(void)
 {
@@ -484,5 +549,6 @@ int main(void)
     RUN_TEST(testArrayLiterals);
     RUN_TEST(testHashLiterals);
     RUN_TEST(testIndexExpressions);
+    RUN_TEST(testFunctions);
     return UNITY_END();
 }
