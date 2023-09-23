@@ -175,3 +175,4 @@ static char* fmtInstruction(const OpDefinition_t* def, SliceInt_t operands) {
 
     return strFormat("ERROR: unhandled operandCount for %s\n", def->name);
 }
+

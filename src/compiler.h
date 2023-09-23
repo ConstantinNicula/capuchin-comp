@@ -13,15 +13,22 @@ typedef struct EmittedInstruction {
     uint32_t position; 
 } EmittedInstruction_t; 
 
-typedef struct Compiler {
+typedef struct CompilationScope {
     Instructions_t instructions;
+    EmittedInstruction_t lastInstruction;
+    EmittedInstruction_t previousInstruction;
+} CompilationScope_t;
+
+DEFINE_VECTOR_TYPE(CompilationScope, CompilationScope_t)
+
+typedef struct Compiler {
     VectorObjects_t* constants; 
 
     bool externalStorage; 
     SymbolTable_t* symbolTable;
 
-    EmittedInstruction_t lastInstruction;
-    EmittedInstruction_t previousInstruction;
+    VectorCompilationScope_t* scopes;
+    uint32_t scopeIndex; 
 } Compiler_t;
 
 typedef enum CompError {
@@ -43,7 +50,8 @@ void cleanupCompiler(Compiler_t* comp);
 CompError_t compilerCompile(Compiler_t* comp, Program_t* program); 
 Bytecode_t compilerGetBytecode(Compiler_t* comp);
 
-
-
+uint32_t compilerEmit(Compiler_t* comp, OpCode_t op,const int operands[]);
+void compilerEnterScope(Compiler_t* comp);
+Instructions_t compilerLeaveScope(Compiler_t* comp);
 
 #endif

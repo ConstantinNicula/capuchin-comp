@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-
+#include "utils.h"
 /*
     Use the DEFINE_VECTOR_TYPE(NAME, TYPE) in .h files to construct custom Vector 
     for a given underlying datatype of your choosing. Add a single IMPL_VECTOR_TYPE(NAME, TYPE) in a .c file 
@@ -30,6 +30,7 @@ void cleanupVector##NAME##Contents(_VEC_TYPE(NAME) *vec, _VEC_CLEAN_FN(NAME) cle
 void cleanupVector##NAME(_VEC_TYPE(NAME) **vec, _VEC_CLEAN_FN(NAME) cleanupFn);                \
 \
 void vector##NAME##Append(_VEC_TYPE(NAME) *vec, const TYPE elem);                              \
+TYPE vector##NAME##Pop(_VEC_TYPE(NAME) * vec);                                                 \
 uint32_t vector##NAME##GetCount(_VEC_TYPE(NAME) *vec);                                         \
 TYPE* vector##NAME##GetBuffer(_VEC_TYPE(NAME) *vec);                                           
 
@@ -98,6 +99,12 @@ void vector##NAME##Append(_VEC_TYPE(NAME) * vec, const TYPE elem) {             
     }                                                                                          \
     memmove(&vec->buf[vec->cnt], &elem, sizeof(elem));                                         \
     vec->cnt++;                                                                                \
+}                                                                                              \
+\
+TYPE vector##NAME##Pop(_VEC_TYPE(NAME) * vec) {                                                \
+    TYPE tmp = vec->buf[vec->cnt-1];                                                             \
+    vec->cnt--;                                                                                \
+    return tmp;                                                                                \
 }                                                                                              \
 \
 uint32_t vector##NAME##GetCount(_VEC_TYPE(NAME) *vec) {                                        \

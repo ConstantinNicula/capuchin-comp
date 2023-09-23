@@ -362,6 +362,7 @@ void testIndexExpressions() {
         }, 
     };
 
+
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
     runCompilerTests(testCases, numTestCases);
 }
@@ -381,40 +382,108 @@ void testFunctions() {
                     codeMakeV(OP_ADD),
                     codeMakeV(OP_RETURN_VALUE),
                     NULL
-                )},
+                ),
+                _END
+            },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 0), 
-                codeMakeV(OP_CONSTANT, 1), 
-                codeMakeV(OP_CONSTANT, 2), 
-                codeMakeV(OP_ARRAY, 3), 
-                codeMakeV(OP_CONSTANT, 3), 
-                codeMakeV(OP_CONSTANT, 4), 
-                codeMakeV(OP_ADD, 0),
-                codeMakeV(OP_INDEX),
+                codeMakeV(OP_CONSTANT, 2),
                 codeMakeV(OP_POP),
                 NULL
             }
         },
         {
-            .input = "{1: 2}[2 - 1]",
-            .expConstants = {_INT(1), _INT(2), _INT(2), _INT(1), _END},
+            .input = "fn() {5 + 10}",
+            .expConstants = {
+                _INT(5), 
+                _INT(10),
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_CONSTANT, 1),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 0),
-                codeMakeV(OP_CONSTANT, 1),
-                codeMakeV(OP_HASH, 2),
                 codeMakeV(OP_CONSTANT, 2),
-                codeMakeV(OP_CONSTANT, 3),
-                codeMakeV(OP_SUB),
-                codeMakeV(OP_INDEX),
                 codeMakeV(OP_POP),
                 NULL
             }
-        }, 
+        },
+        {
+            .input = "fn() {1; 2}",
+            .expConstants = {
+                _INT(1), 
+                _INT(2),
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_POP),
+                    codeMakeV(OP_CONSTANT, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "fn() { }",
+            .expConstants = {
+                _FUNC(
+                    codeMakeV(OP_RETURN, 0),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        }
     };
 
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
     runCompilerTests(testCases, numTestCases);
 }
+
+void testCompilerScopes() {
+    Compiler_t compiler = createCompiler();
+    TEST_INT(0, compiler.scopeIndex, "scopeIndex wrong");
+
+    compilerEmit(&compiler, OP_MUL, NULL);
+    compilerEnterScope(&compiler);
+    TEST_INT(1, compiler.scopeIndex, "scopeIndex wrong");
+
+    compilerEmit(&compiler, OP_SUB, NULL);
+    TEST_INT(1, sliceByteGetLen(compiler.scopes->buf[compiler.scopeIndex].instructions),
+         "instructions length wrong");
+
+    EmittedInstruction_t last = compiler.scopes->buf[compiler.scopeIndex].lastInstruction;
+    TEST_INT(OP_SUB, last.opcode, "lastInstruction.opcode wrong");
+
+    Instructions_t tmp =compilerLeaveScope(&compiler);
+    cleanupSliceByte(tmp);
+    TEST_INT(0, compiler.scopeIndex, "scopIndex wrong");
+
+    compilerEmit(&compiler, OP_ADD, NULL);
+
+    TEST_INT(2, sliceByteGetLen(compiler.scopes->buf[compiler.scopeIndex].instructions),
+         "instructions length wrong");
+
+    last = compiler.scopes->buf[compiler.scopeIndex].lastInstruction;
+    TEST_INT(OP_ADD, last.opcode, "lastInstruction.opcode wrong");
+
+    EmittedInstruction_t previous = compiler.scopes->buf[compiler.scopeIndex].previousInstruction;
+    TEST_INT(OP_MUL, previous.opcode, "previousInstruction.opcode wrong");
+
+    cleanupCompiler(&compiler);
+} 
 
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
@@ -549,6 +618,7 @@ int main(void)
     RUN_TEST(testArrayLiterals);
     RUN_TEST(testHashLiterals);
     RUN_TEST(testIndexExpressions);
+    RUN_TEST(testCompilerScopes);
     RUN_TEST(testFunctions);
     return UNITY_END();
 }

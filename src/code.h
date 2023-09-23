@@ -1,6 +1,7 @@
 #ifndef _CODE_H_
 #define _CODE_H_
 #include "slice.h"
+#include "vector.h"
 #include <stdint.h> 
 
 /* List of supported in instructions (check c file for op structure)*/
@@ -53,7 +54,7 @@ typedef struct OpDefinition {
 
 
 /* Container for bytecode */
-typedef SliceByte_t Instructions_t; 
+typedef SliceByte_t Instructions_t;
 
 char* instructionsToString(Instructions_t ins); 
 

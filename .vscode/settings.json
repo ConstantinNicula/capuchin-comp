@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "vector.h": "c",
-        "system_error": "c"
+        "system_error": "c",
+        "vector": "c"
     }
 }
