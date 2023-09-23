@@ -6,11 +6,10 @@
 #include <stdbool.h>
 #include "ast.h"
 #include "env.h"
+#include "code.h"
 
 typedef struct Object Object_t; 
 DEFINE_VECTOR_TYPE(Objects, Object_t*);
-
-
 
 typedef enum ObjectType{
     OBJECT_INTEGER,
@@ -19,6 +18,7 @@ typedef enum ObjectType{
     OBJECT_RETURN_VALUE,
     OBJECT_ERROR,
     OBJECT_FUNCTION,
+    OBJECT_COMPILED_FUNCTION,
     OBJECT_STRING,
     OBJECT_BUILTIN,
     OBJECT_ARRAY,
@@ -154,6 +154,20 @@ Function_t* copyFunction(const Function_t* obj);
 char* functionInspect(Function_t* obj);
 uint32_t functionGetParameterCount(Function_t* obj);
 Identifier_t** functionGetParameters(Function_t* obj);
+
+/************************************ 
+ *  COMP FUNCTION OBJECT TYPE       *
+ ************************************/
+
+typedef struct CompiledFunction {
+    OBJECT_BASE_ATTRS;
+    Instructions_t instructions;
+} CompiledFunction_t;
+
+CompiledFunction_t* createCompiledFunction(Instructions_t instr);
+CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj);
+
+char* compiledFunctionInspect(CompiledFunction_t* obj);
 
 /************************************ 
  *       ARRAY OBJECT TYPE          *

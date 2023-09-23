@@ -33,6 +33,10 @@ typedef enum OpCode {
     OP_HASH,
     OP_INDEX, 
 
+    OP_CALL,
+    OP_RETURN_VALUE,
+    OP_RETURN, 
+
     OP_POP,
     _OP_COUNT,
 } OpCode_t;

@@ -14,6 +14,7 @@ const char* tokenTypeStrings[_OBJECT_TYPE_CNT] = {
     [OBJECT_STRING]="STRING",
     [OBJECT_NULL]="NULL",
     [OBJECT_FUNCTION]="FUNCTION",
+    [OBJECT_COMPILED_FUNCTION]="COMPILED_FUNCTION",
     [OBJECT_ERROR]="ERROR",
     [OBJECT_BUILTIN]="BUILTIN",
     [OBJECT_ARRAY]="ARRAY",
@@ -41,6 +42,7 @@ static ObjectInspectFn_t objectInsepctFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_RETURN_VALUE]=(ObjectInspectFn_t)returnValueInspect,
     [OBJECT_ERROR]=(ObjectInspectFn_t)errorInspect,
     [OBJECT_FUNCTION]=(ObjectInspectFn_t)functionInspect,
+    [OBJECT_COMPILED_FUNCTION]=(ObjectInspectFn_t)compiledFunctionInspect,
     [OBJECT_BUILTIN]=(ObjectInspectFn_t)builtinInspect,
     [OBJECT_ARRAY]=(ObjectInspectFn_t)arrayInspect,
     [OBJECT_HASH]=(ObjectInspectFn_t)hashInspect
@@ -54,6 +56,7 @@ static ObjectCopyFn_t objectCopyFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_RETURN_VALUE]=(ObjectCopyFn_t)copyReturnValue,
     [OBJECT_ERROR]=(ObjectCopyFn_t)copyError,
     [OBJECT_FUNCTION]=(ObjectCopyFn_t)copyFunction,
+    [OBJECT_COMPILED_FUNCTION]=(ObjectCopyFn_t)copyCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectCopyFn_t)copyBuiltin,
     [OBJECT_ARRAY]=(ObjectCopyFn_t)copyArray,
     [OBJECT_HASH]=(ObjectCopyFn_t)copyHash,
@@ -367,6 +370,43 @@ Identifier_t** functionGetParameters(Function_t* obj) {
     return (Identifier_t**)vectorExpressionsGetBuffer(obj->parameters);
 }
 
+
+/************************************ 
+ *  COMP FUNCTION OBJECT TYPE       *
+ ************************************/
+CompiledFunction_t* createCompiledFunction(Instructions_t instr) {
+    CompiledFunction_t* obj = gcMalloc(sizeof(CompiledFunction_t), GC_DATA_OBJECT);
+    *obj = (CompiledFunction_t) {
+        .type = OBJECT_COMPILED_FUNCTION,
+        .instructions = instr,
+    };
+    return obj;
+}
+
+void gcCleanupCompiledFunction(CompiledFunction_t** obj) {
+    if(!(*obj)) 
+        return;
+
+    // cleanup owned attr.
+    cleanupSliceByte((*obj)->instructions);
+   
+    gcFree(*obj);
+    *obj = NULL;
+}
+void gcMarkCompiledFunction(CompiledFunction_t* obj) { 
+    // nothing to mark
+}
+
+CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj) {
+    assert(0 && "Not implemented! Copy operations on compiled function should never happen");
+    return NULL;
+}
+
+char* compiledFunctionInspect(CompiledFunction_t* obj) {
+    return strFormat("CompileFunction[%p]", obj);
+}
+
+
 /************************************ 
  *       ARRAY OBJECT TYPE          *
  ************************************/
@@ -574,6 +614,7 @@ static ObjectCleanupFn_t objectCleanupFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_RETURN_VALUE]=(ObjectCleanupFn_t)gcCleanupReturnValue,
     [OBJECT_ERROR]=(ObjectCleanupFn_t)gcCleanupError,
     [OBJECT_FUNCTION]=(ObjectCleanupFn_t)gcCleanupFunction,
+    [OBJECT_COMPILED_FUNCTION]=(ObjectCleanupFn_t)gcCleanupCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectCleanupFn_t)gcCleanupBuiltin,
     [OBJECT_ARRAY]=(ObjectCleanupFn_t)gcCleanupArray,
     [OBJECT_HASH]=(ObjectCleanupFn_t)gcCleanupHash,
@@ -587,6 +628,7 @@ static ObjectGcMarkFn_t objectMarkFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_RETURN_VALUE]=(ObjectGcMarkFn_t)gcMarkReturnValue,
     [OBJECT_ERROR]=(ObjectGcMarkFn_t)gcMarkError,
     [OBJECT_FUNCTION]=(ObjectGcMarkFn_t)gcMarkFunction,
+    [OBJECT_COMPILED_FUNCTION]=(ObjectGcMarkFn_t)gcMarkCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectGcMarkFn_t)gcMarkBuiltin,
     [OBJECT_ARRAY]=(ObjectGcMarkFn_t)gcMarkArray,
     [OBJECT_HASH]=(ObjectGcMarkFn_t)gcMarkHash,

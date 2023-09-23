@@ -113,7 +113,7 @@ void testHashObject(GenericHash_t hl, Object_t* obj) {
     int i = 0; 
     while (i < cnt) {
         // TO DO: fix for generic object type. 
-        Object_t* expKeyObject = createInteger(hl.keys[i].il);
+        Object_t* expKeyObject = (Object_t*)createInteger(hl.keys[i].il);
 
         HashPair_t* pair = hashGetPair(hashObj, expKeyObject);
         TEST_NOT_NULL(pair, "no pair found!");
