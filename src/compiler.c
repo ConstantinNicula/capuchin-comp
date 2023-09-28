@@ -81,6 +81,7 @@ static CompError_t compilerCompileArrayLiteral(Compiler_t* comp, ArrayLiteral_t*
 static CompError_t compilerCompileHashLiteral(Compiler_t* comp, HashLiteral_t* hashLit); 
 static CompError_t compilerCompileIndexExpression(Compiler_t* comp, IndexExpression_t* indExpr);
 static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLiteral_t* func);
+static CompError_t compilerCompileCallExpression(Compiler_t* comp, CallExpression_t* expression);
 
 static SliceByte_t* compilerCurrentInstructions(Compiler_t* comp);
 static uint32_t compilerAddInstruction(Compiler_t* comp, SliceByte_t ins); 
@@ -317,6 +318,9 @@ CompError_t compilerCompileExpression(Compiler_t* comp, Expression_t* expression
         case EXPRESSION_FUNCTION_LITERAL:
             err = compilerCompileFunctionLiteral(comp, (FunctionLiteral_t*)expression);
             break;
+        case EXPRESSION_CALL_EXPRESSION:
+            err = compilerCompileCallExpression(comp, (CallExpression_t*)expression);
+            break;
         default: 
             assert(0 && "Unreachable: Unhandled expression type");    
     }
@@ -552,5 +556,15 @@ static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLite
     const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn)}; 
     compilerEmit(comp, OP_CONSTANT, args);
     
+    return COMP_NO_ERROR;
+}
+
+static CompError_t compilerCompileCallExpression(Compiler_t* comp, CallExpression_t* expression) {
+    CompError_t err = compilerCompileExpression(comp, expression->function); 
+    if (err != COMP_NO_ERROR) {
+        return err;
+    }
+
+    compilerEmit(comp, OP_CALL, NULL);
     return COMP_NO_ERROR;
 }

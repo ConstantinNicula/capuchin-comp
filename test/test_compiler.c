@@ -452,6 +452,7 @@ void testFunctions() {
     runCompilerTests(testCases, numTestCases);
 }
 
+
 void testCompilerScopes() {
     Compiler_t compiler = createCompiler();
     TEST_INT(0, compiler.scopeIndex, "scopeIndex wrong");
@@ -483,7 +484,54 @@ void testCompilerScopes() {
     TEST_INT(OP_MUL, previous.opcode, "previousInstruction.opcode wrong");
 
     cleanupCompiler(&compiler);
-} 
+}
+
+void testFunctionCalls() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "fn() {24}();",
+            .expConstants = {
+                _INT(24), 
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CALL),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "let noArg = fn(){ 24 }; noArg();",
+            .expConstants = {
+                _INT(24), 
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0), 
+                codeMakeV(OP_CALL),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+   };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+}
 
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
@@ -621,5 +669,6 @@ int main(void)
     RUN_TEST(testIndexExpressions);
     RUN_TEST(testCompilerScopes);
     RUN_TEST(testFunctions);
+    RUN_TEST(testFunctionCalls);
     return UNITY_END();
 }

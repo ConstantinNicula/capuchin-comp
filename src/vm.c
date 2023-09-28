@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "utils.h"
 #include "gc.h"
-
+#include "frame.h"
 #define MAX_FRAMES 1024 
 
 static void cleanupGlobals(Vm_t *vm); 
@@ -44,6 +44,10 @@ static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements);
 static VmError_t vmExecuteOpIndex(Vm_t* vm); 
 static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index);
 static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index); 
+
+static VmError_t vmExecuteOpCall(Vm_t* vm);
+static VmError_t vmExecuteOpReturnValue(Vm_t* vm); 
+static VmError_t vmExecuteOpReturn(Vm_t* vm); 
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
@@ -224,7 +228,19 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_INDEX:
                 err = vmExecuteOpIndex(vm);
                 break;
-            
+
+            case OP_CALL:
+                err = vmExecuteOpCall(vm);
+                break;
+
+            case OP_RETURN_VALUE:
+                err = vmExecuteOpReturnValue(vm);
+                break;
+
+            case OP_RETURN:
+                err = vmExecuteOpReturn(vm);
+                break;
+
             default:
                 break;
         }
@@ -511,6 +527,34 @@ static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip) {
     *ip += 2;
 
     return vmPush(vm, vm->globals[globalIndex]);
+}
+
+
+static VmError_t vmExecuteOpCall(Vm_t* vm) {
+    Object_t* fn = vm->stack[vm->sp - 1];
+    if (fn->type != OBJECT_COMPILED_FUNCTION) {
+        return VM_CALL_NON_FUNCTION; 
+    }
+    Frame_t frame = createFrame((CompiledFunction_t*) fn);
+    vmPushFrame(vm, &frame);
+
+    return VM_NO_ERROR;
+}
+
+static VmError_t vmExecuteOpReturnValue(Vm_t* vm) {
+    Object_t* returnValue = vmPop(vm);
+
+    vmPopFrame(vm);
+    vmPop(vm);
+
+    return vmPush(vm, returnValue);
+}
+
+static VmError_t vmExecuteOpReturn(Vm_t* vm) {
+    vmPopFrame(vm);
+    vmPop(vm);
+
+    return vmPush(vm, (Object_t*)createNull());
 }
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {

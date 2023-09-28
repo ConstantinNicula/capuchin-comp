@@ -16,6 +16,7 @@ typedef enum VmError {
     VM_UNSUPPORTED_TYPES,
     VM_UNSUPPORTED_OPERATOR,
     VM_INVALID_KEY, 
+    VM_CALL_NON_FUNCTION,
 } VmError_t;
 
 typedef struct Vm {
