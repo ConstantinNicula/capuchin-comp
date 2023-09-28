@@ -48,3 +48,10 @@ void sliceResize(void** ptrOut, size_t len, size_t elemSize) {
     *header = len;
     (*ptrOut) = slicePtrGetData(header);
 }
+
+void* copySlicePtr(void*src, size_t elemSize) {
+    size_t elemCnt = slicePtrGetLen(src);
+    void *ret = allocSlicePtr(elemCnt, elemSize);
+    memmove(ret, src, elemCnt * elemSize);
+    return ret;
+} 

@@ -42,6 +42,7 @@ typedef struct Bytecode {
     VectorObjects_t* constants; 
 } Bytecode_t; 
 
+void cleanupBytecode(Bytecode_t* bytecode);
 
 Compiler_t createCompiler(); 
 Compiler_t createCompilerWithState(SymbolTable_t* s); 

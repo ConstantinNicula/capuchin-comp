@@ -28,12 +28,13 @@ Compiler_t createCompilerWithState(SymbolTable_t* s) {
     });
     return (Compiler_t) {
         .constants = createVectorObjects(),
-        .symbolTable = createSymbolTable(),
+        .symbolTable = s,
         .externalStorage = true,
         .scopes = scopes, 
         .scopeIndex = 0, 
     };
 }
+
 
 void cleanupCompilationScope(CompilationScope_t* scope) {
     if (!scope) return;
@@ -42,14 +43,22 @@ void cleanupCompilationScope(CompilationScope_t* scope) {
 
 void cleanupCompiler(Compiler_t* comp) {
     if(!comp) return;
+
     cleanupVectorCompilationScope(&comp->scopes, cleanupCompilationScope);
+    
     // Objects are GC'd no need for cleanup function
     cleanupVectorObjects(&comp->constants, NULL); 
+    
     // cleanup symtable only if owned 
     if (!comp->externalStorage) {
         cleanupSymbolTable(comp->symbolTable);
     }
     // Stack allocated no need for free :) 
+}
+
+void cleanupBytecode(Bytecode_t* bytecode) {
+    cleanupSliceByte(bytecode->instructions);
+    cleanupVectorObjects(&bytecode->constants, NULL);
 }
 
 static CompError_t compilerCompileProgram(Compiler_t* comp, Program_t* program);
@@ -85,10 +94,12 @@ static void compilerReplaceLastPopWithReturn(Compiler_t* comp);
 static void compilerChangeOperand(Compiler_t* comp, uint32_t pos, int operand); 
 
 Bytecode_t compilerGetBytecode(Compiler_t* comp) {
-    return (Bytecode_t) {
-        .instructions = *compilerCurrentInstructions(comp),
-        .constants = comp->constants,
+    Bytecode_t bytecode = {
+        .instructions = copySliceByte(*compilerCurrentInstructions(comp)),
+        .constants = copyVectorObjects(comp->constants, copyObject),
     };
+
+    return bytecode;
 }
 
 void compilerEnterScope(Compiler_t* comp) {
@@ -103,7 +114,7 @@ void compilerEnterScope(Compiler_t* comp) {
 
 Instructions_t compilerLeaveScope(Compiler_t* comp) {
     Instructions_t instructions = *compilerCurrentInstructions(comp);   
-    CompilationScope_t tmp = vectorCompilationScopePop(comp->scopes);
+    (void)vectorCompilationScopePop(comp->scopes);
     comp->scopeIndex--;
     return instructions;
 }
@@ -114,7 +125,6 @@ static SliceByte_t* compilerCurrentInstructions(Compiler_t* comp) {
 }
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj) {
-    // TO DO GC add external ref :)
     vectorObjectsAppend(comp->constants, obj);
     return vectorObjectsGetCount(comp->constants) - 1; 
 }

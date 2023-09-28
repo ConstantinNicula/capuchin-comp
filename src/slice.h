@@ -9,6 +9,7 @@
 #define DEF_SLICE_TYPE(NAME, TYPE)                                       \
 typedef TYPE* _SLICE_TYPE(NAME);                                         \
 _SLICE_TYPE(NAME) createSlice##NAME(size_t sz);                          \
+_SLICE_TYPE(NAME) copySlice##NAME(_SLICE_TYPE(NAME) src);                \
 void cleanupSlice##NAME(_SLICE_TYPE(NAME) slice);                        \
 size_t slice##NAME##GetLen(_SLICE_TYPE(NAME) slice);                     \
 void slice##NAME##Resize(_SLICE_TYPE(NAME) *slice, size_t len);          \
@@ -25,6 +26,11 @@ void cleanupSlice##NAME(_SLICE_TYPE(NAME) slice) {     \
     extern void freeSlicePtr(void*);                   \
     freeSlicePtr(slice);                               \
 }                                                      \
+\
+_SLICE_TYPE(NAME) copySlice##NAME(_SLICE_TYPE(NAME) src){          \
+    extern void* copySlicePtr(void*, size_t);                      \
+    return (_SLICE_TYPE(NAME)) copySlicePtr(src, sizeof(TYPE));    \
+}                                                                  \
 \
 size_t slice##NAME##GetLen(_SLICE_TYPE(NAME) slice) { \
     extern size_t slicePtrGetLen(void*);              \

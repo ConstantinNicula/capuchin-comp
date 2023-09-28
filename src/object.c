@@ -398,8 +398,7 @@ void gcMarkCompiledFunction(CompiledFunction_t* obj) {
 }
 
 CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj) {
-    assert(0 && "Not implemented! Copy operations on compiled function should never happen");
-    return NULL;
+    return createCompiledFunction(copySliceByte(obj->instructions));
 }
 
 char* compiledFunctionInspect(CompiledFunction_t* obj) {

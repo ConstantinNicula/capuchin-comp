@@ -508,6 +508,7 @@ void runCompilerTests(TestCase_t *tc, int numTc)
         // cleanup expects(there are runtime allocated)
         cleanupInstructions(tc[i].expInstructions);
 
+        cleanupBytecode(&bytecode);
         cleanupCompiler(&compiler);
         cleanupParser(&parser);
         cleanupProgram(&program);

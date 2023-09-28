@@ -2,11 +2,19 @@
 #include "utils.h"
 #include "gc.h"
 
+#define MAX_FRAMES 1024 
 
 static void cleanupGlobals(Vm_t *vm); 
 static void cleanupStack(Vm_t* vm);
+static void cleanupFrames(Vm_t* vm);
 
-static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip); 
+static void vmPushFrame(Vm_t *vm, Frame_t *f);
+static Frame_t* vmCurrentFrame(Vm_t *vm);
+static Frame_t vmPopFrame(Vm_t *vm); 
+
+static Instructions_t vmGetInstructions(Vm_t* vm);
+
+static VmError_t vmExecuteOpConstant(Vm_t* vm, int32_t* ip); 
 static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op);
 static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_t* left, Integer_t* right); 
 static VmError_t vmExecuteBinaryStringOperation(Vm_t *vm, OpCode_t op, String_t* left, String_t* right); 
@@ -20,18 +28,17 @@ static VmError_t vmExecuteBooleanComparison(Vm_t* vm, OpCode_t op, Boolean_t* le
 static VmError_t vmExecuteBangOperator(Vm_t *vm);
 static VmError_t vmExecuteMinusOperator(Vm_t *vm);
 
-static VmError_t vmExecuteOpJump(Vm_t* vm, uint32_t* ip);
-static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip);
+static VmError_t vmExecuteOpJump(Vm_t* vm, int32_t* ip);
+static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, int32_t* ip);
 
 static VmError_t vmExecuteOpPop(Vm_t* vm); 
+static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, int32_t* ip); 
+static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip); 
 
-static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip); 
-static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip); 
-
-static VmError_t vmExecuteOpArray(Vm_t* vm, uint32_t* ip); 
+static VmError_t vmExecuteOpArray(Vm_t* vm, int32_t* ip); 
 static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements);
 
-static VmError_t vmExecuteOpHash(Vm_t* vm, uint32_t* ip); 
+static VmError_t vmExecuteOpHash(Vm_t* vm, int32_t* ip); 
 static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements); 
 
 static VmError_t vmExecuteOpIndex(Vm_t* vm); 
@@ -46,35 +53,50 @@ static Object_t* nativeBoolToBooleanObject(bool val);
 static uint16_t readUint16BigEndian(uint8_t* ptr); 
 
 
+
 Vm_t createVm(Bytecode_t* bytecode) {
+    Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
+    frames[0] = createFrame(createCompiledFunction(bytecode->instructions));
+
     return (Vm_t) {
         .constants = bytecode->constants,
-        .instructions = bytecode->instructions, 
-        .sp = 0, 
+
         .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
+        .sp = 0, 
+
         .externalStorage = false,
         .globals = callocChk(GLOBALS_SIZE * sizeof(Object_t*)),
+
+        .frames = frames,
+        .frameIndex = 1,
     };
 } 
 
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
+    Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
+    frames[0] = createFrame(createCompiledFunction(bytecode->instructions));
+
     return (Vm_t) {
         .constants = bytecode->constants,
-        .instructions = bytecode->instructions, 
-        .sp = 0, 
+
         .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
+        .sp = 0, 
+        
         .externalStorage = true,
         .globals = s,
+        
+        .frames = frames,
+        .frameIndex = 1,
     };
 }
 
 void cleanupVm(Vm_t *vm) {
     if (!vm) return;
 
+    cleanupVectorObjects(&vm->constants, NULL);
     cleanupStack(vm);
-    if (!vm->externalStorage) {
-        cleanupGlobals(vm); 
-    }
+    if (!vm->externalStorage) cleanupGlobals(vm); 
+    cleanupFrames(vm);
 }
 
 static void cleanupGlobals(Vm_t *vm) {
@@ -93,6 +115,31 @@ static void cleanupStack(Vm_t *vm) {
     free(vm->stack);
 }
 
+static void cleanupFrames(Vm_t* vm) {
+    for (uint32_t i = 0; i < vm->frameIndex; i++) {
+        cleanupFrame(&(vm->frames[i]));
+    }
+    free(vm->frames);
+}
+
+static Frame_t* vmCurrentFrame(Vm_t *vm) {
+    return &(vm->frames[vm->frameIndex-1]);
+}
+
+static void vmPushFrame(Vm_t *vm, Frame_t *f) {
+    vm->frames[vm->frameIndex] = *f;
+    vm->frameIndex++;
+}
+
+static Frame_t vmPopFrame(Vm_t *vm) {
+    vm->frameIndex--;
+    return vm->frames[vm->frameIndex];
+} 
+
+static Instructions_t vmGetInstructions(Vm_t* vm) { 
+    return frameGetInstructions(vmCurrentFrame(vm));
+}
+
 Object_t* vmStackTop(Vm_t *vm) {
     if (vm->sp == 0) return NULL;
     return vm->stack[vm->sp-1];
@@ -104,14 +151,16 @@ Object_t* vmLastPoppedStackElem(Vm_t *vm) {
 
 VmError_t vmRun(Vm_t *vm) {
     VmError_t err = VM_NO_ERROR;
-    uint32_t len = sliceByteGetLen(vm->instructions);
     
-    for (uint32_t ip = 0; ip < len; ip++) {
-        OpCode_t op = vm->instructions[ip];
+    while (vmCurrentFrame(vm)->ip < (int32_t)sliceByteGetLen(vmCurrentFrame(vm)->fn->instructions) - 1) {
+        vmCurrentFrame(vm)->ip++;
+
+        Instructions_t ins = vmGetInstructions(vm);
+        OpCode_t op = ins[vmCurrentFrame(vm)->ip];
          
         switch(op) {
             case OP_CONSTANT: 
-                err = vmExecuteOpConstant(vm, &ip); 
+                err = vmExecuteOpConstant(vm, &vmCurrentFrame(vm)->ip); 
                 break;
 
             case OP_ADD:
@@ -149,27 +198,27 @@ VmError_t vmRun(Vm_t *vm) {
                 break;
 
             case OP_JUMP: 
-                err = vmExecuteOpJump(vm, &ip);
+                err = vmExecuteOpJump(vm, &vmCurrentFrame(vm)->ip);
                 break;
             
             case OP_JUMP_NOT_TRUTHY:
-                err = vmExecuteOpJumpNotTruthy(vm, &ip);
+                err = vmExecuteOpJumpNotTruthy(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
             case OP_SET_GLOBAL:
-                err = vmExecuteOpSetGlobal(vm, &ip);
+                err = vmExecuteOpSetGlobal(vm, &vmCurrentFrame(vm)->ip);
                 break;
         
             case OP_GET_GLOBAL:
-                err = vmExecuteOpGetGlobal(vm, &ip);
+                err = vmExecuteOpGetGlobal(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
             case OP_ARRAY:
-                err = vmExecuteOpArray(vm, &ip);
+                err = vmExecuteOpArray(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
             case OP_HASH:
-                err = vmExecuteOpHash(vm , &ip);
+                err = vmExecuteOpHash(vm , &vmCurrentFrame(vm)->ip);
                 break;
 
             case OP_INDEX:
@@ -187,8 +236,9 @@ VmError_t vmRun(Vm_t *vm) {
     return err;
 }
 
-static VmError_t vmExecuteOpConstant(Vm_t* vm, uint32_t* ip) {
-    uint16_t constIndex = readUint16BigEndian(&vm->instructions[*ip + 1]);
+static VmError_t vmExecuteOpConstant(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t constIndex = readUint16BigEndian(&ins[*ip + 1]);
     *ip += 2;
 
     Object_t* constObj = vectorObjectsGetBuffer(vm->constants)[constIndex]; 
@@ -311,8 +361,9 @@ static VmError_t vmExecuteMinusOperator(Vm_t *vm) {
 }
 
 
-static VmError_t vmExecuteOpArray(Vm_t* vm, uint32_t* ip) {
-    uint16_t numElements = readUint16BigEndian(&vm->instructions[*ip + 1]);
+static VmError_t vmExecuteOpArray(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t numElements = readUint16BigEndian(&ins[*ip + 1]);
     *ip += 2;
 
     Array_t* array = vmBuildArray(vm, numElements);
@@ -335,8 +386,9 @@ static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements) {
     return arr; 
 }
 
-static VmError_t vmExecuteOpHash(Vm_t* vm, uint32_t* ip) {
-    uint16_t numElements = readUint16BigEndian(&vm->instructions[*ip + 1]);
+static VmError_t vmExecuteOpHash(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t numElements = readUint16BigEndian(&ins[*ip + 1]);
     *ip += 2;
 
     Hash_t* hash = vmBuildHash(vm, numElements);
@@ -417,15 +469,17 @@ static VmError_t vmExecuteOpPop(Vm_t* vm) {
     return VM_NO_ERROR;
 }
 
-static VmError_t vmExecuteOpJump(Vm_t* vm, uint32_t* ip) {
-    uint16_t pos = readUint16BigEndian(&(vm->instructions[*ip + 1]));
+static VmError_t vmExecuteOpJump(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t pos = readUint16BigEndian(&(ins[*ip + 1]));
     *ip = pos - 1;
 
     return VM_NO_ERROR; 
 }
 
-static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, uint32_t* ip) {
-    uint16_t pos = readUint16BigEndian(&(vm->instructions[*ip + 1]));
+static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t pos = readUint16BigEndian(&(ins[*ip + 1]));
     *ip += 2;
 
     Object_t* condition = vmPop(vm);
@@ -440,8 +494,9 @@ static VmError_t vmExecuteOpNull(Vm_t* vm) {
     return vmPush(vm, (Object_t*) createNull());
 }
 
-static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip) {
-    uint16_t globalIndex = readUint16BigEndian(&(vm->instructions[*ip + 1]));
+static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t globalIndex = readUint16BigEndian(&(ins[*ip + 1]));
     *ip += 2;
 
     if (vm->globals[globalIndex] != NULL)
@@ -450,8 +505,9 @@ static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, uint32_t* ip) {
     return VM_NO_ERROR;
 }
 
-static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, uint32_t* ip) {
-    uint16_t globalIndex = readUint16BigEndian(&(vm->instructions[*ip + 1]));
+static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t globalIndex = readUint16BigEndian(&(ins[*ip + 1]));
     *ip += 2;
 
     return vmPush(vm, vm->globals[globalIndex]);

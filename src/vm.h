@@ -4,6 +4,7 @@
 #include "object.h"
 #include "code.h"
 #include "compiler.h"
+#include "frame.h"
 
 
 #define STACK_SIZE 2048
@@ -18,27 +19,30 @@ typedef enum VmError {
 } VmError_t;
 
 typedef struct Vm {
-// External fields
-
-    Instructions_t instructions; 
+// Compiled constants 
     VectorObjects_t* constants;
 
-// Owned fields: 
+// Stack variables  
     Object_t** stack;
     uint16_t sp;
 
-// Storage 
-    bool externalStorage;
+// Global storage  
     Object_t** globals;
+    bool externalStorage;
+
+// Call frames  
+    Frame_t* frames;
+    uint32_t frameIndex; 
+
 } Vm_t;
 
 Vm_t createVm(Bytecode_t* bytecode);
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s);
 void cleanupVm(Vm_t *vm);
 
+
 Object_t* vmStackTop(Vm_t *vm);
 VmError_t vmRun(Vm_t *vm);
 Object_t* vmLastPoppedStackElem(Vm_t *vm); 
-
 
 #endif
