@@ -455,11 +455,14 @@ void testFunctions() {
 
 void testCompilerScopes() {
     Compiler_t compiler = createCompiler();
+    SymbolTable_t* globalSymbolTable = compiler.symbolTable;
     TEST_INT(0, compiler.scopeIndex, "scopeIndex wrong");
 
     compilerEmit(&compiler, OP_MUL, NULL);
+
     compilerEnterScope(&compiler);
     TEST_INT(1, compiler.scopeIndex, "scopeIndex wrong");
+    TEST_ASSERT_MESSAGE(compiler.symbolTable->outer == globalSymbolTable, "compiler did not enclose symbolTable");
 
     compilerEmit(&compiler, OP_SUB, NULL);
     TEST_INT(1, sliceByteGetLen(compiler.scopes->buf[compiler.scopeIndex].instructions),
@@ -468,9 +471,9 @@ void testCompilerScopes() {
     EmittedInstruction_t last = compiler.scopes->buf[compiler.scopeIndex].lastInstruction;
     TEST_INT(OP_SUB, last.opcode, "lastInstruction.opcode wrong");
 
-    Instructions_t tmp =compilerLeaveScope(&compiler);
-    cleanupSliceByte(tmp);
+    Instructions_t tmp = compilerLeaveScope(&compiler);
     TEST_INT(0, compiler.scopeIndex, "scopIndex wrong");
+    TEST_ASSERT_MESSAGE(compiler.symbolTable == globalSymbolTable, "compiler did not restore globalSymbolTable");
 
     compilerEmit(&compiler, OP_ADD, NULL);
 
@@ -483,6 +486,7 @@ void testCompilerScopes() {
     EmittedInstruction_t previous = compiler.scopes->buf[compiler.scopeIndex].previousInstruction;
     TEST_INT(OP_MUL, previous.opcode, "previousInstruction.opcode wrong");
 
+    cleanupSliceByte(tmp);
     cleanupCompiler(&compiler);
 }
 

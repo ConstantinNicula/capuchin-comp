@@ -111,12 +111,19 @@ void compilerEnterScope(Compiler_t* comp) {
     };
     vectorCompilationScopeAppend(comp->scopes, scope); 
     comp->scopeIndex ++; 
+
+    comp->symbolTable = createEnclosedSymbolTable(comp->symbolTable);
 }
 
 Instructions_t compilerLeaveScope(Compiler_t* comp) {
     Instructions_t instructions = *compilerCurrentInstructions(comp);   
-    (void)vectorCompilationScopePop(comp->scopes);
+    (void) vectorCompilationScopePop(comp->scopes);
     comp->scopeIndex--;
+    
+    SymbolTable_t* inner = comp->symbolTable; 
+    comp->symbolTable = inner->outer;
+    cleanupSymbolTable(inner);
+
     return instructions;
 }
 
@@ -265,8 +272,11 @@ static CompError_t compilerCompileLetStatement(Compiler_t* comp, LetStatement_t*
     }
 
     Symbol_t* symbol = symbolTableDefine(comp->symbolTable, statement->name->value);
-    compilerEmit(comp, OP_SET_GLOBAL, (const int[]) {symbol->index});    
-
+    if (symbol->scope == SCOPE_GLOBAL) {
+        compilerEmit(comp, OP_SET_GLOBAL, (const int[]) {symbol->index});    
+    } else {
+        compilerEmit(comp, OP_SET_LOCAL, (const int[]) {symbol->index});    
+    }
 
     return COMP_NO_ERROR;
 }
@@ -468,7 +478,11 @@ static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t*
 static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident) {
     Symbol_t* symbol = symbolTableResolve(comp->symbolTable, ident->value);
     if (!symbol) return COMP_UNDEFINED_VARIABLE;
-    compilerEmit(comp, OP_GET_GLOBAL, (const int[]){symbol->index});
+    if (symbol->scope == SCOPE_GLOBAL) {
+        compilerEmit(comp, OP_GET_GLOBAL, (const int[]){symbol->index});
+    } else {
+        compilerEmit(comp, OP_GET_LOCAL, (const int[]){symbol->index});
+    }
     return COMP_NO_ERROR;
 }
 
