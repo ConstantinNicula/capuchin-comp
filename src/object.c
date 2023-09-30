@@ -254,7 +254,7 @@ char* returnValueInspect(ReturnValue_t* obj) {
 
 void gcCleanupReturnValue(ReturnValue_t** obj) {
     if (!(*obj)) return;
-    // Note: intenionally does not free inner obj. 
+    // Note: intentionally does not free inner obj. 
     gcFree(*obj);
     *obj = NULL;    
 }
@@ -374,19 +374,19 @@ Identifier_t** functionGetParameters(Function_t* obj) {
 /************************************ 
  *  COMP FUNCTION OBJECT TYPE       *
  ************************************/
-CompiledFunction_t* createCompiledFunction(Instructions_t instr) {
+CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLocals) {
     CompiledFunction_t* obj = gcMalloc(sizeof(CompiledFunction_t), GC_DATA_OBJECT);
     *obj = (CompiledFunction_t) {
         .type = OBJECT_COMPILED_FUNCTION,
         .instructions = instr,
+        .numLocals = numLocals,
     };
     return obj;
 }
 
 void gcCleanupCompiledFunction(CompiledFunction_t** obj) {
-    if(!(*obj)) 
-        return;
-
+    if(!(*obj)) return;
+    
     // cleanup owned attr.
     cleanupSliceByte((*obj)->instructions);
    
@@ -398,7 +398,7 @@ void gcMarkCompiledFunction(CompiledFunction_t* obj) {
 }
 
 CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj) {
-    return createCompiledFunction(copySliceByte(obj->instructions));
+    return createCompiledFunction(copySliceByte(obj->instructions), obj->numLocals);
 }
 
 char* compiledFunctionInspect(CompiledFunction_t* obj) {

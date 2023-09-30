@@ -564,9 +564,10 @@ static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLite
         compilerEmit(comp, OP_RETURN, NULL);
     }
 
+    uint32_t numLocals = comp->symbolTable->numDefinitions; 
     Instructions_t instr = compilerLeaveScope(comp);
-    
-    CompiledFunction_t* compiledFn = createCompiledFunction(instr);
+     
+    CompiledFunction_t* compiledFn = createCompiledFunction(instr, numLocals);
     const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn)}; 
     compilerEmit(comp, OP_CONSTANT, args);
     

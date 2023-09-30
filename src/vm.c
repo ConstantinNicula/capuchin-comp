@@ -48,6 +48,9 @@ static VmError_t vmExecuteOpCall(Vm_t* vm);
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm); 
 static VmError_t vmExecuteOpReturn(Vm_t* vm); 
 
+static VmError_t vmExecuteOpSetLocal(Vm_t* vm, int32_t* ip);
+static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip);
+
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
@@ -58,35 +61,23 @@ static uint16_t readUint16BigEndian(uint8_t* ptr);
 
 
 Vm_t createVm(Bytecode_t* bytecode) {
-    Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
-    frames[0] = createFrame(createCompiledFunction(bytecode->instructions));
-
-    return (Vm_t) {
-        .constants = bytecode->constants,
-
-        .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
-        .sp = 0, 
-
-        .externalStorage = false,
-        .globals = callocChk(GLOBALS_SIZE * sizeof(Object_t*)),
-
-        .frames = frames,
-        .frameIndex = 1,
-    };
+    return createVmWithStore(bytecode, NULL);
 } 
 
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
     Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
-    frames[0] = createFrame(createCompiledFunction(bytecode->instructions));
+    CompiledFunction_t* mainFunction = createCompiledFunction(bytecode->instructions, 0);
+    frames[0] = createFrame(mainFunction, 0);
 
+    Object_t** globals = (s == NULL) ? callocChk(GLOBALS_SIZE * sizeof(Object_t*)) : s;
     return (Vm_t) {
         .constants = bytecode->constants,
 
         .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
         .sp = 0, 
         
-        .externalStorage = true,
-        .globals = s,
+        .externalStorage = (s != NULL),
+        .globals = globals,
         
         .frames = frames,
         .frameIndex = 1,
@@ -238,6 +229,14 @@ VmError_t vmRun(Vm_t *vm) {
 
             case OP_RETURN:
                 err = vmExecuteOpReturn(vm);
+                break;
+
+            case OP_SET_LOCAL:
+                err = vmExecuteOpSetLocal(vm, &vmCurrentFrame(vm)->ip);
+                break;
+
+            case OP_GET_LOCAL:
+                err = vmExecuteOpGetLocal(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
             default:
@@ -530,30 +529,51 @@ static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip) {
 
 
 static VmError_t vmExecuteOpCall(Vm_t* vm) {
-    Object_t* fn = vm->stack[vm->sp - 1];
-    if (fn->type != OBJECT_COMPILED_FUNCTION) {
+    Object_t* obj = vm->stack[vm->sp - 1];
+    if (obj->type != OBJECT_COMPILED_FUNCTION) {
         return VM_CALL_NON_FUNCTION; 
     }
-    Frame_t frame = createFrame((CompiledFunction_t*) fn);
-    vmPushFrame(vm, &frame);
+    CompiledFunction_t* fn = (CompiledFunction_t*) obj;
 
+    Frame_t frame = createFrame(fn, vm->sp);
+    vmPushFrame(vm, &frame);
+    vm->sp = frame.basePointer + fn->numLocals;
     return VM_NO_ERROR;
 }
 
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm) {
     Object_t* returnValue = vmPop(vm);
 
-    vmPopFrame(vm);
-    vmPop(vm);
+    Frame_t frame = vmPopFrame(vm);
+    vm->sp = frame.basePointer - 1;
 
     return vmPush(vm, returnValue);
 }
 
 static VmError_t vmExecuteOpReturn(Vm_t* vm) {
-    vmPopFrame(vm);
-    vmPop(vm);
+    Frame_t frame = vmPopFrame(vm);
+    vm->sp = frame.basePointer - 1;
 
     return vmPush(vm, (Object_t*)createNull());
+}
+
+static VmError_t vmExecuteOpSetLocal(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint8_t localIndex = ins[*ip + 1];
+    *ip += 1;
+
+    Frame_t* frame = vmCurrentFrame(vm);
+    vm->stack[frame->basePointer + localIndex] = vmPop(vm);
+    return VM_NO_ERROR; 
+}
+
+static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint8_t localIndex = ins[*ip + 1];
+    *ip += 1;
+
+    Frame_t* frame = vmCurrentFrame(vm);
+    return vmPush(vm, vm->stack[frame->basePointer + localIndex]);
 }
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {

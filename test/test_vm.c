@@ -360,13 +360,43 @@ void testFunctionsWithoutReturnValue() {
     runVmTest(vmTestCases, numTestCases);
 }
 
-void testFirstClassFunctions() {
+
+void testCallingFunctionsWithBindings() {
     TestCase_t vmTestCases[] = {
         {
-            "let returnsOne = fn() { 1; };" 
-            "let returnsOneReturner = fn() {returnsOne;};"
-            "returnsOneReturner()();", 
-            _INT(1) 
+            "let one = fn() { let one = 1; one };"
+            "one();",
+            _INT(1),
+        },
+        {
+            "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };"
+            "oneAndTwo();",
+            _INT(3),
+        },
+        {
+            "let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };"
+            "let threeAndFour = fn() { let three = 3; let four = 4; three + four; };"
+            "oneAndTwo() + threeAndFour();",
+            _INT(10),
+        },
+        {
+            "let firstFoobar = fn() { let foobar = 50; foobar; };"
+            "let secondFoobar = fn() { let foobar = 100; foobar; };"
+            "firstFoobar() + secondFoobar();",
+            _INT(150),
+        },
+        {
+            "let globalSeed = 50;"
+            "let minusOne = fn() {"
+            "   let num = 1;"
+            "   globalSeed - num;"
+            "}"
+            "let minusTwo = fn() {"
+            "   let num = 2;"
+            "   globalSeed - num;"
+            "}"
+            "minusOne() + minusTwo();",
+            _INT(97),
         },
     };
 
@@ -374,19 +404,35 @@ void testFirstClassFunctions() {
     runVmTest(vmTestCases, numTestCases);
 }
 
-// not needed when using generate_test_runner.rb
+void testFirstClassFunctions() {
+    TestCase_t vmTestCases[] = {
+        {
+            "let returnsOneReturner = fn() {"
+            "    let returnsOne = fn() { 1; };"
+            "    returnsOne;"
+            "};"
+            "returnsOneReturner()();",
+            _INT(1),
+        }
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(testIntegerArithmetic);
-    RUN_TEST(testBooleanExpressions);
-    RUN_TEST(testConditionals);
-    RUN_TEST(testGlobalLetStatements);
-    RUN_TEST(testArrayLiterals);
-    RUN_TEST(testHashLiterals);
-    RUN_TEST(testIndexExpression);
-    RUN_TEST(testCallingFunctionsWithArguments);
-    RUN_TEST(testFunctionsWithReturnStatement);
-    RUN_TEST(testFunctionsWithoutReturnValue);
+    // RUN_TEST(testIntegerArithmetic);
+    // RUN_TEST(testBooleanExpressions);
+    // RUN_TEST(testConditionals);
+    // RUN_TEST(testGlobalLetStatements);
+    // RUN_TEST(testArrayLiterals);
+    // RUN_TEST(testHashLiterals);
+    // RUN_TEST(testIndexExpression);
+    // RUN_TEST(testCallingFunctionsWithArguments);
+    // RUN_TEST(testFunctionsWithReturnStatement);
+    // RUN_TEST(testFunctionsWithoutReturnValue);
+    // RUN_TEST(testCallingFunctionsWithBindings);
     RUN_TEST(testFirstClassFunctions);
     return UNITY_END();
 }

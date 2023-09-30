@@ -107,7 +107,7 @@ void gcFreeExtRef(void* ptr) {
     if (!ptr) return;
     GCDataHeader_t* header = getHeader(ptr);
     if (!isBitSet(header, EXTERNAL_REF_BIT)) {
-        perror("GC attempted free on non invalid external ref (potential double free)");
+        perror("GC attempted free on invalid external ref (potential double free)");
         exit(1);
     }
     clearBit(header, EXTERNAL_REF_BIT);

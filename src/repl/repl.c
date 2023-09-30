@@ -49,7 +49,7 @@ void evalInput(const char* input, SymbolTable_t* symTable, Object_t** globals) {
     Object_t* stackTop = vmLastPoppedStackElem(&vm);
     printf("%s\n", objectInspect(stackTop));
     // TO DO: fix memory leak (nothing is gc'd at the moment)
-    gcForceRun();
+    //gcForceRun();
 
 vm_err: 
     cleanupVm(&vm);
