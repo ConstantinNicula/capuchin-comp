@@ -24,6 +24,7 @@ void testCodeMake() {
     TestCase_t testCases[] = {
         {.op = OP_CONSTANT, .operands={65534}, .expLen=3, .expBytes={(uint8_t)OP_CONSTANT, 255, 254}},
         {.op = OP_ADD, .operands={}, .expLen=1, .expBytes={(uint8_t)OP_ADD}},
+        {.op = OP_GET_LOCAL, .operands={255}, .expLen=2, .expBytes={(uint8_t)OP_GET_LOCAL, 255}},
     };
 
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
@@ -48,7 +49,8 @@ void testCodeReadOperands() {
     } TestCase_t;
 
     TestCase_t testCases[] = {
-        {.op=OP_CONSTANT, .numOperands=1, .operands={65535}, .bytesRead=2},
+        {.op = OP_CONSTANT, .numOperands=1, .operands={65535}, .bytesRead=2},
+        {.op = OP_GET_LOCAL, .numOperands=1, .operands={255}, .bytesRead=1},
     };
     int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
 
@@ -74,14 +76,16 @@ void testCodeReadOperands() {
 void testInstructionsString() {
     SliceByte_t instructions[] = {
         codeMakeV(OP_ADD), 
+        codeMakeV(OP_GET_LOCAL, 1),
         codeMakeV(OP_CONSTANT, 2),
         codeMakeV(OP_CONSTANT, 65535),
     };
     int numInstructions = sizeof(instructions) / sizeof(instructions[0]);
 
     const char* expected = "0000 OpAdd\n"
-                        "0001 OpConstant 2\n"
-                        "0004 OpConstant 65535\n";
+                        "0001 OpGetLocal 1\n"
+                        "0003 OpConstant 2\n"
+                        "0006 OpConstant 65535\n";
 
     SliceByte_t concatted = createSliceByte(0);
     for (int i = 0; i < numInstructions; i++) {
@@ -104,5 +108,5 @@ int main(void) {
     RUN_TEST(testCodeMake);
     RUN_TEST(testInstructionsString);
     RUN_TEST(testCodeReadOperands);
-   return UNITY_END();
+    return UNITY_END();
 }

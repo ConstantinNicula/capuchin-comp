@@ -28,8 +28,13 @@ void cleanupSymbol(Symbol_t** sym) {
 }
 
 SymbolTable_t* createSymbolTable() {
+    return createEnclosedSymbolTable(NULL);
+}
+
+SymbolTable_t* createEnclosedSymbolTable(SymbolTable_t* outer) {
     SymbolTable_t* symTable = mallocChk(sizeof(SymbolTable_t));
     *symTable = (SymbolTable_t) {
+        .outer = outer,
         .store = createHashMap(),
         .numDefinitions = 0
     };
@@ -44,7 +49,13 @@ void cleanupSymbolTable(SymbolTable_t* symTable) {
 
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name) {
-    Symbol_t* sym = createSymbol(name, SCOPE_GLOBAL, symTable->numDefinitions);
+    Symbol_t* sym = NULL;
+    if (!symTable->outer) {
+        sym = createSymbol(name, SCOPE_GLOBAL, symTable->numDefinitions);
+    } else {
+        sym = createSymbol(name, SCOPE_LOCAL, symTable->numDefinitions);
+    }
+
     hashMapInsert(symTable->store, name, sym);
     symTable->numDefinitions++;
     return sym;
@@ -52,5 +63,9 @@ Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name) {
 
 
 Symbol_t* symbolTableResolve(SymbolTable_t* symTable, const char* name) {
-    return hashMapGet(symTable->store, name);
+    Symbol_t* sym = hashMapGet(symTable->store, name);
+    if (!sym && symTable->outer) {
+        return symbolTableResolve(symTable->outer, name);
+    }
+    return sym;
 }

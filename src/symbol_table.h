@@ -5,6 +5,7 @@
 
 typedef enum SymbolScope {
     SCOPE_GLOBAL,
+    SCOPE_LOCAL,
     _NUM_SYMBOL_SCOPES
 } SymbolScope_t;
 
@@ -20,11 +21,13 @@ Symbol_t* createSymbol(const char* name, SymbolScope_t scope, uint32_t index);
 void cleanupSymbol(Symbol_t** sym);
 
 typedef struct SymbolTable {
+    struct SymbolTable* outer; 
     HashMap_t* store;
     uint32_t numDefinitions; 
 } SymbolTable_t;
 
 SymbolTable_t* createSymbolTable();
+SymbolTable_t* createEnclosedSymbolTable(SymbolTable_t* outer);
 void cleanupSymbolTable(SymbolTable_t* symTable);
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name);

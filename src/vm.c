@@ -1,7 +1,6 @@
 #include "vm.h"
 #include "utils.h"
 #include "gc.h"
-#include "frame.h"
 #define MAX_FRAMES 1024 
 
 static void cleanupGlobals(Vm_t *vm); 

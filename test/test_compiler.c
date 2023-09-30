@@ -533,6 +533,86 @@ void testFunctionCalls() {
     runCompilerTests(testCases, numTestCases);
 }
 
+void testLetStatementScopes() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "let num = 55;"
+                     "fn() {num}",
+            .expConstants = {
+                _INT(55), 
+                _FUNC(
+                    codeMakeV(OP_GET_GLOBAL, 0),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "fn () {\n"
+                    "   let num = 55;\n"
+                    "   num\n"
+                    "}",
+            .expConstants = {
+                _INT(55), 
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_SET_LOCAL, 0),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "fn () {\n"
+                    "   let a = 55;\n"
+                    "   let b = 77;\n"
+                    "   a + b\n"
+                    "}",
+            .expConstants = {
+                _INT(55), 
+                _INT(77), 
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_SET_LOCAL, 0),
+                    codeMakeV(OP_CONSTANT, 1),
+                    codeMakeV(OP_SET_LOCAL, 1),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_GET_LOCAL, 1),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        }
+   };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+
+}
+
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
     for (int i = 0; i < numTc; i++)
@@ -670,5 +750,6 @@ int main(void)
     RUN_TEST(testCompilerScopes);
     RUN_TEST(testFunctions);
     RUN_TEST(testFunctionCalls);
+    RUN_TEST(testLetStatementScopes);
     return UNITY_END();
 }

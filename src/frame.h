@@ -12,5 +12,5 @@ typedef struct Frame {
 
 Frame_t createFrame(CompiledFunction_t* fn);
 Instructions_t frameGetInstructions(Frame_t* frame);
-
+void cleanupFrame(Frame_t* frame); 
 #endif
