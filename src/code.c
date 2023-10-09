@@ -37,7 +37,7 @@ static OpDefinition_t definitions[_OP_COUNT] = {
     [OP_HASH] = {"OpHash", .argCount=1, .argWidths={2}},
     [OP_INDEX] = {"OpIndex", .argCount=0, .argWidths={0}},
     
-    [OP_CALL] = {"OpCall", .argCount=0, .argWidths={0}},
+    [OP_CALL] = {"OpCall", .argCount=1, .argWidths={1}},
     [OP_RETURN_VALUE] = {"OpReturnValue", .argCount=0, .argWidths={0}},
     [OP_RETURN] = {"OpReturn", .argCount=0, .argWidths={0}},
 

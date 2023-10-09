@@ -506,7 +506,7 @@ void testFunctionCalls() {
             },
             .expInstructions = {
                 codeMakeV(OP_CONSTANT, 1),
-                codeMakeV(OP_CALL),
+                codeMakeV(OP_CALL, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -526,7 +526,53 @@ void testFunctionCalls() {
                 codeMakeV(OP_CONSTANT, 1),
                 codeMakeV(OP_SET_GLOBAL, 0),
                 codeMakeV(OP_GET_GLOBAL, 0), 
-                codeMakeV(OP_CALL),
+                codeMakeV(OP_CALL, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "let oneArg = fn(a) {}"
+                     "oneArg(24);" ,
+            .expConstants = {
+                _FUNC(
+                    codeMakeV(OP_RETURN),
+                    NULL
+                ),
+                _INT(24),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0), 
+                codeMakeV(OP_CONSTANT, 1), 
+                codeMakeV(OP_CALL, 1),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "let manyArg = fn(a, b, c) {}"
+                     "manyArg(24, 25, 26);" ,
+            .expConstants = {
+                _FUNC(
+                    codeMakeV(OP_RETURN),
+                    NULL
+                ),
+                _INT(24),
+                _INT(25),
+                _INT(26),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0), 
+                codeMakeV(OP_CONSTANT, 1), 
+                codeMakeV(OP_CONSTANT, 2), 
+                codeMakeV(OP_CONSTANT, 3), 
+                codeMakeV(OP_CALL, 3),
                 codeMakeV(OP_POP),
                 NULL
             }

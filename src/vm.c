@@ -44,7 +44,7 @@ static VmError_t vmExecuteOpIndex(Vm_t* vm);
 static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index);
 static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index); 
 
-static VmError_t vmExecuteOpCall(Vm_t* vm);
+static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip);
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm); 
 static VmError_t vmExecuteOpReturn(Vm_t* vm); 
 
@@ -220,7 +220,7 @@ VmError_t vmRun(Vm_t *vm) {
                 break;
 
             case OP_CALL:
-                err = vmExecuteOpCall(vm);
+                err = vmExecuteOpCall(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
             case OP_RETURN_VALUE:
@@ -528,12 +528,13 @@ static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip) {
 }
 
 
-static VmError_t vmExecuteOpCall(Vm_t* vm) {
+static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
     Object_t* obj = vm->stack[vm->sp - 1];
     if (obj->type != OBJECT_COMPILED_FUNCTION) {
         return VM_CALL_NON_FUNCTION; 
     }
     CompiledFunction_t* fn = (CompiledFunction_t*) obj;
+    *ip += 1;
 
     Frame_t frame = createFrame(fn, vm->sp);
     vmPushFrame(vm, &frame);

@@ -579,7 +579,16 @@ static CompError_t compilerCompileCallExpression(Compiler_t* comp, CallExpressio
     if (err != COMP_NO_ERROR) {
         return err;
     }
+    
+    uint32_t numArgs = callExpresionGetArgumentCount(expression);
+    Expression_t** args = callExpressionGetArguments(expression);
+    for (uint32_t i = 0; i < numArgs; i++) {
+        err = compilerCompileExpression(comp, args[i]);
+        if (err != COMP_NO_ERROR) {
+            return err;
+        }
+    }
 
-    compilerEmit(comp, OP_CALL, NULL);
-    return COMP_NO_ERROR;
+    compilerEmit(comp, OP_CALL, (const int[]) {numArgs});
+    return COMP_NO_ERROR; 
 }

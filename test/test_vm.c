@@ -422,17 +422,17 @@ void testFirstClassFunctions() {
 
 int main(void) {
     UNITY_BEGIN();
-    // RUN_TEST(testIntegerArithmetic);
-    // RUN_TEST(testBooleanExpressions);
-    // RUN_TEST(testConditionals);
-    // RUN_TEST(testGlobalLetStatements);
-    // RUN_TEST(testArrayLiterals);
-    // RUN_TEST(testHashLiterals);
-    // RUN_TEST(testIndexExpression);
-    // RUN_TEST(testCallingFunctionsWithArguments);
-    // RUN_TEST(testFunctionsWithReturnStatement);
-    // RUN_TEST(testFunctionsWithoutReturnValue);
-    // RUN_TEST(testCallingFunctionsWithBindings);
+    RUN_TEST(testIntegerArithmetic);
+    RUN_TEST(testBooleanExpressions);
+    RUN_TEST(testConditionals);
+    RUN_TEST(testGlobalLetStatements);
+    RUN_TEST(testArrayLiterals);
+    RUN_TEST(testHashLiterals);
+    RUN_TEST(testIndexExpression);
+    RUN_TEST(testCallingFunctionsWithArguments);
+    RUN_TEST(testFunctionsWithReturnStatement);
+    RUN_TEST(testFunctionsWithoutReturnValue);
+    RUN_TEST(testCallingFunctionsWithBindings);
     RUN_TEST(testFirstClassFunctions);
     return UNITY_END();
 }
