@@ -100,9 +100,12 @@ Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
 void cleanupVm(Vm_t *vm) {
     if (!vm) return;
 
-    cleanupVectorObjects(&vm->constants, NULL);
+    if (!vm->externalStorage) {
+        cleanupGlobals(vm); 
+        cleanupVectorObjects(&vm->constants, NULL);
+    }
+
     cleanupStack(vm);
-    if (!vm->externalStorage) cleanupGlobals(vm); 
     cleanupFrames(vm);
 }
 

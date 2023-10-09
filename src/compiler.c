@@ -19,7 +19,7 @@ Compiler_t createCompiler() {
     };
 }
 
-Compiler_t createCompilerWithState(SymbolTable_t* s) {
+Compiler_t createCompilerWithState(SymbolTable_t* sym, VectorObjects_t* constants) {
     VectorCompilationScope_t* scopes = createVectorCompilationScope();
     vectorCompilationScopeAppend(scopes, (CompilationScope_t) {
         .instructions = createSliceByte(0),
@@ -27,8 +27,8 @@ Compiler_t createCompilerWithState(SymbolTable_t* s) {
         .previousInstruction = {0},
     });
     return (Compiler_t) {
-        .constants = createVectorObjects(),
-        .symbolTable = s,
+        .constants = constants,
+        .symbolTable = sym,
         .externalStorage = true,
         .scopes = scopes, 
         .scopeIndex = 0, 
@@ -46,14 +46,11 @@ void cleanupCompiler(Compiler_t* comp) {
 
     cleanupVectorCompilationScope(&comp->scopes, cleanupCompilationScope);
     
-    // Objects are GC'd no need for cleanup function
-    cleanupVectorObjects(&comp->constants, NULL); 
-    
-    // cleanup symtable only if owned 
+    // cleanup symtable and constants only if owned 
     if (!comp->externalStorage) {
         cleanupSymbolTable(comp->symbolTable);
+        cleanupVectorObjects(&comp->constants, NULL); 
     }
-    // Stack allocated no need for free :) 
 }
 
 void cleanupBytecode(Bytecode_t* bytecode) {
@@ -97,7 +94,7 @@ static void compilerChangeOperand(Compiler_t* comp, uint32_t pos, int operand);
 Bytecode_t compilerGetBytecode(Compiler_t* comp) {
     Bytecode_t bytecode = {
         .instructions = copySliceByte(*compilerCurrentInstructions(comp)),
-        .constants = copyVectorObjects(comp->constants, copyObject),
+        .constants = (!comp->externalStorage) ? copyVectorObjects(comp->constants, copyObject) : comp->constants,
     };
 
     return bytecode;

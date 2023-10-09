@@ -45,7 +45,7 @@ typedef struct Bytecode {
 void cleanupBytecode(Bytecode_t* bytecode);
 
 Compiler_t createCompiler(); 
-Compiler_t createCompilerWithState(SymbolTable_t* s); 
+Compiler_t createCompilerWithState(SymbolTable_t* s, VectorObjects_t* constants); 
 void cleanupCompiler(Compiler_t* comp); 
 
 CompError_t compilerCompile(Compiler_t* comp, Program_t* program); 

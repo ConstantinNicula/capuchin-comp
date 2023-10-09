@@ -21,7 +21,7 @@ static void printParserErrors(const char**err, uint32_t cnt){
     }
 }
 
-void evalInput(const char* input, SymbolTable_t* symTable, Object_t** globals) {
+void evalInput(const char* input, SymbolTable_t* symTable, VectorObjects_t* constants,  Object_t** globals) {
     Lexer_t* lexer = createLexer(input);
     Parser_t* parser = createParser(lexer);
     Program_t* program = parserParseProgram(parser);
@@ -31,7 +31,7 @@ void evalInput(const char* input, SymbolTable_t* symTable, Object_t** globals) {
         goto parser_err;
     }
     
-    Compiler_t comp = createCompilerWithState(symTable);
+    Compiler_t comp = createCompilerWithState(symTable, constants);
     CompError_t compErr = compilerCompile(&comp, program);        
     if (compErr != COMP_NO_ERROR) {
         printf("Woops! Compilation failed:\n %d\n", compErr);
@@ -62,7 +62,8 @@ parser_err:
 
 void replMode() {
     char inputBuffer[4096] = "";
-    Object_t** globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*));
+    Object_t** globals = callocChk(GLOBALS_SIZE * sizeof(Object_t*));
+    VectorObjects_t* constants = createVectorObjects();
     SymbolTable_t* symTable = createSymbolTable(); 
     while (true) {
         printf("%s", PROMPT);
@@ -72,8 +73,13 @@ void replMode() {
         if (strcmp(inputBuffer, "quit\n") == 0) 
             break;
             
-        evalInput(inputBuffer, symTable, globals);
+        evalInput(inputBuffer, symTable, constants, globals);
     }
+
+    cleanupSymbolTable(symTable);
+    // FIXME: cleanup does not remove allocate objects 
+    cleanupVectorObjects(&constants, NULL);
+    free(globals);
 }
 
 char* readEntireFile(char* filename) {
@@ -97,8 +103,15 @@ char* readEntireFile(char* filename) {
 void fileExecMode(char* filename) {
     char* input = readEntireFile(filename);
     Object_t** globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*));
+    VectorObjects_t* constants = createVectorObjects();
     SymbolTable_t* symTable = createSymbolTable();
-    evalInput(input, symTable, globals);
+
+    evalInput(input, symTable, constants, globals);
+    
+    cleanupSymbolTable(symTable);
+    // FIXME: cleanup does not remove allocate objects 
+    cleanupVectorObjects(&constants, NULL);
+    free(globals);
     free(input);
 }
 
