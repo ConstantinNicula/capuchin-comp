@@ -41,8 +41,8 @@ void evalInput(const char* input, SymbolTable_t* symTable, Object_t** globals) {
     Bytecode_t bytecode = compilerGetBytecode(&comp);
     Vm_t vm = createVmWithStore(&bytecode, globals);
     VmError_t vmErr = vmRun(&vm);
-    if (vmErr != VM_NO_ERROR) {
-        printf("Woops! Executing bytecode failed:\n %d\n", vmErr);
+    if (vmErr.code != VM_NO_ERROR) {
+        printf("Woops! Executing bytecode failed:\n %s\n", vmErr.str);
         goto vm_err;
     } 
 

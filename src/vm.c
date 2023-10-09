@@ -38,7 +38,7 @@ static VmError_t vmExecuteOpArray(Vm_t* vm, int32_t* ip);
 static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements);
 
 static VmError_t vmExecuteOpHash(Vm_t* vm, int32_t* ip); 
-static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements); 
+static VmError_t vmBuildHash(Vm_t* vm, uint16_t numElements, Hash_t** hash); 
 
 static VmError_t vmExecuteOpIndex(Vm_t* vm); 
 static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index);
@@ -58,6 +58,19 @@ static bool vmIsTruthy(Object_t* obj);
 static Object_t* nativeBoolToBooleanObject(bool val);
 static uint16_t readUint16BigEndian(uint8_t* ptr); 
 
+VmError_t createVmError(VmErrorCode_t code, char* str) {
+    return (VmError_t) {
+        .code = code, 
+        .str = str
+    };
+}
+
+void cleanupVmError(VmError_t* err){ 
+    if (!err && !err->str) return;
+
+    free(err->str);
+}
+
 
 
 Vm_t createVm(Bytecode_t* bytecode) {
@@ -66,7 +79,7 @@ Vm_t createVm(Bytecode_t* bytecode) {
 
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
     Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
-    CompiledFunction_t* mainFunction = createCompiledFunction(bytecode->instructions, 0);
+    CompiledFunction_t* mainFunction = createCompiledFunction(bytecode->instructions, 0, 0);
     frames[0] = createFrame(mainFunction, 0);
 
     Object_t** globals = (s == NULL) ? callocChk(GLOBALS_SIZE * sizeof(Object_t*)) : s;
@@ -144,7 +157,7 @@ Object_t* vmLastPoppedStackElem(Vm_t *vm) {
 }
 
 VmError_t vmRun(Vm_t *vm) {
-    VmError_t err = VM_NO_ERROR;
+    VmError_t err = createVmError(VM_NO_ERROR, NULL);
     
     while (vmCurrentFrame(vm)->ip < (int32_t)sliceByteGetLen(vmCurrentFrame(vm)->fn->instructions) - 1) {
         vmCurrentFrame(vm)->ip++;
@@ -243,7 +256,7 @@ VmError_t vmRun(Vm_t *vm) {
                 break;
         }
 
-        if (err != VM_NO_ERROR) {
+        if (err.code != VM_NO_ERROR) {
             break;
         }
     }
@@ -272,7 +285,9 @@ static VmError_t vmExecuteBinaryOperation(Vm_t *vm, OpCode_t op) {
         return vmExecuteBinaryStringOperation(vm, op, (String_t*)left, (String_t*)right);
     }
 
-    return VM_UNSUPPORTED_TYPES; 
+    return createVmError(VM_UNSUPPORTED_TYPES, strFormat("unsupported types for binary operation: %s %s", 
+                objectTypeToString(left->type), 
+                objectTypeToString(right->type))); 
 }
 
 static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_t* left, Integer_t* right) {
@@ -294,7 +309,7 @@ static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_
             result = leftValue / rightValue;
             break;
         default:
-            return VM_UNSUPPORTED_OPERATOR;
+            return createVmError(VM_UNSUPPORTED_OPERATOR, strFormat("unknown integer operator: %d", op));
     }
 
     return vmPush(vm, (Object_t*)createInteger(result));
@@ -302,7 +317,7 @@ static VmError_t vmExecuteBinaryIntegerOperation(Vm_t *vm, OpCode_t op, Integer_
 
 static VmError_t vmExecuteBinaryStringOperation(Vm_t *vm, OpCode_t op, String_t* left, String_t* right) {
     if (op != OP_ADD) {
-        return VM_UNSUPPORTED_OPERATOR;
+        return createVmError(VM_UNSUPPORTED_OPERATOR, strFormat("unknown string operator: %d", op));
     }
 
     char* concatStr = strFormat("%s%s", left->value, right->value);
@@ -323,7 +338,8 @@ static VmError_t vmExecuteComparison(Vm_t* vm, OpCode_t op) {
         return vmExecuteBooleanComparison(vm, op, (Boolean_t*)left, (Boolean_t*)right);
     }
 
-    return VM_UNSUPPORTED_TYPES; 
+    return createVmError(VM_UNSUPPORTED_TYPES, strFormat("unknown operator: %d (%s %s)", 
+        op, objectTypeToString(left->type), objectTypeToString(right->type))); 
 }
 
 static VmError_t vmExecuteIntegerComparison(Vm_t* vm, OpCode_t op, Integer_t* left, Integer_t* right) {
@@ -335,7 +351,7 @@ static VmError_t vmExecuteIntegerComparison(Vm_t* vm, OpCode_t op, Integer_t* le
         case OP_GREATER_THAN:
             return vmPush(vm, nativeBoolToBooleanObject(left->value > right->value));
         default:
-            return VM_UNSUPPORTED_OPERATOR;
+            return createVmError(VM_UNSUPPORTED_OPERATOR, strFormat("unknown operator: %d", op));
     }
 }
 
@@ -346,7 +362,7 @@ static VmError_t vmExecuteBooleanComparison(Vm_t* vm, OpCode_t op, Boolean_t* le
         case OP_NOT_EQUAL:
             return vmPush(vm, nativeBoolToBooleanObject(left->value != right->value));
         default:
-            return VM_UNSUPPORTED_OPERATOR; 
+            return createVmError(VM_UNSUPPORTED_OPERATOR, strFormat("unknown operator: %dd", op)); 
     }
 }
 
@@ -367,7 +383,8 @@ static VmError_t vmExecuteBangOperator(Vm_t *vm) {
 static VmError_t vmExecuteMinusOperator(Vm_t *vm) {
     Object_t* operand = vmPop(vm);
     if (operand->type != OBJECT_INTEGER) {
-        return VM_UNSUPPORTED_TYPES;
+        return createVmError(VM_UNSUPPORTED_TYPES, strFormat("unsupported type for negation: %s", 
+            objectTypeToString(operand->type)));
     }
 
     int64_t value = ((Integer_t*)operand)->value;
@@ -405,15 +422,16 @@ static VmError_t vmExecuteOpHash(Vm_t* vm, int32_t* ip) {
     uint16_t numElements = readUint16BigEndian(&ins[*ip + 1]);
     *ip += 2;
 
-    Hash_t* hash = vmBuildHash(vm, numElements);
-    if (!hash) {
-        return VM_INVALID_KEY;
+    Hash_t* hash;
+    VmError_t err = vmBuildHash(vm, numElements, &hash);
+    if (err.code != VM_NO_ERROR) {
+        return err;
     }
     return vmPush(vm, (Object_t*)hash);
 }
 
-static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements) {
-    Hash_t* hash = createHash();
+static VmError_t vmBuildHash(Vm_t* vm, uint16_t numElements, Hash_t** hash) {
+    *hash = createHash();
     for(uint16_t i = vm->sp - numElements; i < vm->sp; i+= 2) {
         Object_t* key = vm->stack[i];
         Object_t* value = vm->stack[i+1];
@@ -421,14 +439,14 @@ static Hash_t* vmBuildHash(Vm_t* vm, uint16_t numElements) {
         // check if key is hashable 
         // FIXME: this should emit a proper error code.  
         if (!objectIsHashable(key)) {
-            return NULL;
+            return createVmError(VM_INVALID_KEY, strFormat("unusable as hash key: %s", 
+                objectTypeToString(key->type)));
         }
 
         HashPair_t* pair = createHashPair(key, value);
-        hashInsertPair(hash, pair);
+        hashInsertPair(*hash, pair);
     }
-
-    return hash;
+    return createVmError(VM_NO_ERROR, NULL);
 }
 
 static VmError_t vmExecuteOpIndex(Vm_t* vm) {
@@ -441,7 +459,8 @@ static VmError_t vmExecuteOpIndex(Vm_t* vm) {
         return vmExecuteHashIndex(vm, (Hash_t*)left, index);
     }
 
-    return VM_UNSUPPORTED_TYPES; 
+    return createVmError(VM_UNSUPPORTED_TYPES, strFormat("index operator not supported: %s", 
+        objectTypeToString(left->type))); 
 }
 
 static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index) {
@@ -458,7 +477,8 @@ static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index) 
 
 static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index) {
     if (!objectIsHashable(index)) {
-        return VM_INVALID_KEY;
+        return createVmError(VM_INVALID_KEY, strFormat("unusable as hash key: %s", 
+            objectTypeToString(index->type)));
     }
 
     HashPair_t* pair = hashGetPair(hash, index);
@@ -480,7 +500,7 @@ static VmError_t vmExecuteOpBoolean(Vm_t* vm, OpCode_t op) {
 
 static VmError_t vmExecuteOpPop(Vm_t* vm) {
     vmPop(vm); 
-    return VM_NO_ERROR;
+    return createVmError(VM_NO_ERROR, NULL);
 }
 
 static VmError_t vmExecuteOpJump(Vm_t* vm, int32_t* ip) {
@@ -488,7 +508,7 @@ static VmError_t vmExecuteOpJump(Vm_t* vm, int32_t* ip) {
     uint16_t pos = readUint16BigEndian(&(ins[*ip + 1]));
     *ip = pos - 1;
 
-    return VM_NO_ERROR; 
+    return createVmError(VM_NO_ERROR, NULL); 
 }
 
 static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, int32_t* ip) {
@@ -501,7 +521,7 @@ static VmError_t vmExecuteOpJumpNotTruthy(Vm_t* vm, int32_t* ip) {
         *ip = pos - 1;
     }
 
-    return VM_NO_ERROR;
+    return createVmError(VM_NO_ERROR, NULL);
 }
 
 static VmError_t vmExecuteOpNull(Vm_t* vm) {
@@ -516,7 +536,7 @@ static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, int32_t* ip) {
     if (vm->globals[globalIndex] != NULL)
         gcFreeExtRef(vm->globals[globalIndex]);
     vm->globals[globalIndex] = gcGetExtRef(vmPop(vm));
-    return VM_NO_ERROR;
+    return createVmError(VM_NO_ERROR, NULL);
 }
 
 static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip) {
@@ -529,17 +549,25 @@ static VmError_t vmExecuteOpGetGlobal(Vm_t* vm, int32_t* ip) {
 
 
 static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
-    Object_t* obj = vm->stack[vm->sp - 1];
-    if (obj->type != OBJECT_COMPILED_FUNCTION) {
-        return VM_CALL_NON_FUNCTION; 
-    }
-    CompiledFunction_t* fn = (CompiledFunction_t*) obj;
+    uint8_t numArgs = vmGetInstructions(vm)[*ip+1];
     *ip += 1;
 
-    Frame_t frame = createFrame(fn, vm->sp);
+    Object_t* obj = vm->stack[vm->sp - 1 - numArgs];
+    if (obj->type != OBJECT_COMPILED_FUNCTION) {
+        return createVmError(VM_CALL_NON_FUNCTION, strFormat("calling non function object: %s", 
+            objectTypeToString(obj->type))); 
+    }
+    CompiledFunction_t* fn = (CompiledFunction_t*) obj;
+
+    if (numArgs != fn->numParameters) {
+        return createVmError(VM_CALL_WRONG_PARAMS, strFormat("wrong number of arguments: want=%d, got=%d", 
+            fn->numParameters, numArgs));
+    }
+
+    Frame_t frame = createFrame(fn, vm->sp - numArgs);
     vmPushFrame(vm, &frame);
     vm->sp = frame.basePointer + fn->numLocals;
-    return VM_NO_ERROR;
+    return createVmError(VM_NO_ERROR, NULL);
 }
 
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm) {
@@ -565,7 +593,7 @@ static VmError_t vmExecuteOpSetLocal(Vm_t* vm, int32_t* ip) {
 
     Frame_t* frame = vmCurrentFrame(vm);
     vm->stack[frame->basePointer + localIndex] = vmPop(vm);
-    return VM_NO_ERROR; 
+    return createVmError(VM_NO_ERROR, NULL); 
 }
 
 static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip) {
@@ -579,11 +607,11 @@ static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip) {
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
     if (vm->sp >= STACK_SIZE) {
-        return VM_STACK_OVERFLOW;
+        return createVmError(VM_STACK_OVERFLOW, strFormat("stack overflow sp(%d)", vm->sp));
     }
     vm->stack[vm->sp] = obj;
     vm->sp++;
-    return VM_NO_ERROR;
+    return createVmError(VM_NO_ERROR, NULL);
 }
 
 static Object_t* vmPop(Vm_t* vm) {

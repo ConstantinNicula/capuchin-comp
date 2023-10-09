@@ -551,6 +551,12 @@ static CompError_t compilerCompileIndexExpression(Compiler_t* comp, IndexExpress
 static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLiteral_t* func) {
     compilerEnterScope(comp);
 
+    uint32_t numParams = functionLiteralGetParameterCount(func);
+    Identifier_t** params = functionLiteralGetParameters(func);
+    for (uint32_t i = 0; i < numParams; i++) {
+        symbolTableDefine(comp->symbolTable, params[i]->value);
+    }
+
     CompError_t err = compilerCompileBlockStatement(comp, func->body);
     if (err != COMP_NO_ERROR) {
         return err;
@@ -567,7 +573,7 @@ static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLite
     uint32_t numLocals = comp->symbolTable->numDefinitions; 
     Instructions_t instr = compilerLeaveScope(comp);
      
-    CompiledFunction_t* compiledFn = createCompiledFunction(instr, numLocals);
+    CompiledFunction_t* compiledFn = createCompiledFunction(instr, numLocals, numParams);
     const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn)}; 
     compilerEmit(comp, OP_CONSTANT, args);
     

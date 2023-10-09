@@ -374,12 +374,13 @@ Identifier_t** functionGetParameters(Function_t* obj) {
 /************************************ 
  *  COMP FUNCTION OBJECT TYPE       *
  ************************************/
-CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLocals) {
+CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLocals, uint32_t numParameters) {
     CompiledFunction_t* obj = gcMalloc(sizeof(CompiledFunction_t), GC_DATA_OBJECT);
     *obj = (CompiledFunction_t) {
         .type = OBJECT_COMPILED_FUNCTION,
         .instructions = instr,
         .numLocals = numLocals,
+        .numParameters = numParameters
     };
     return obj;
 }
@@ -398,7 +399,7 @@ void gcMarkCompiledFunction(CompiledFunction_t* obj) {
 }
 
 CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj) {
-    return createCompiledFunction(copySliceByte(obj->instructions), obj->numLocals);
+    return createCompiledFunction(copySliceByte(obj->instructions), obj->numLocals, obj->numParameters);
 }
 
 char* compiledFunctionInspect(CompiledFunction_t* obj) {

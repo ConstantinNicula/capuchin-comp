@@ -44,12 +44,13 @@ void runVmTest(TestCase_t tc[], int numTestCases) {
         Bytecode_t bytecode = compilerGetBytecode(&compiler);   
         Vm_t vm = createVm(&bytecode);
         VmError_t vmErr = vmRun(&vm); 
-        TEST_INT(VM_NO_ERROR, vmErr, "Vm error"); 
+        TEST_INT(VM_NO_ERROR, vmErr.code, vmErr.str); 
 
         Object_t* stackElem = vmLastPoppedStackElem(&vm);
 
         testExpectedObject(&tc[i].exp, stackElem);
 
+        cleanupVmError(&vmErr);
         cleanupVm(&vm);
         cleanupCompiler(&compiler);
         cleanupParser(&parser);
@@ -420,6 +421,97 @@ void testFirstClassFunctions() {
     runVmTest(vmTestCases, numTestCases);
 }
 
+void testCallingFunctionsWithArgumentsAndLocalBindings() {
+    TestCase_t vmTestCases[] = {
+        {
+            "let identity = fn(a) {a};"
+            "identity(4);",
+            _INT(4),
+        },
+        { 
+            "let sum = fn(a, b) {a + b;};"
+            "sum(1, 2);",
+            _INT(3),
+        },
+        { 
+            "let sum = fn(a, b) {"
+            "   let c = a + b;"
+            "   c;"
+            "};"
+            "sum(1, 2);",
+            _INT(3),
+        },
+        { 
+            "let sum = fn(a, b) {"
+            "   let c = a + b;"
+            "   c;"
+            "};"
+            "sum(1, 2) + sum(3, 4);",
+            _INT(10),
+        },
+        { 
+            "let sum = fn(a, b) {"
+            "   let c = a + b;"
+            "   c;"
+            "};"
+            "let outer = fn() {"
+            "    sum(1, 2) + sum(3, 4);"
+            "};"
+            "outer();",
+            _INT(10),
+        }
+
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
+void testCallingFunctionsWithWrongArguments() {
+    typedef struct TestCase {
+        const char* input;
+        const char* expected;
+    } TestCase_t;
+
+    TestCase_t testCases[] = {
+        {
+            .input = "fn() {1;}(1);",
+            .expected = "wrong number of arguments: want=0, got=1"
+        },
+        {
+            .input = "fn(a) {a;}();",
+            .expected = "wrong number of arguments: want=1, got=0"
+        },
+        {
+            .input = "fn(a, b) {a + b;}(1);",
+            .expected = "wrong number of arguments: want=2, got=1"
+        }
+    };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    for (int i = 0; i < numTestCases; i++) {
+        Lexer_t* lexer = createLexer(testCases[i].input);
+        Parser_t* parser = createParser(lexer);
+        Program_t* program = parserParseProgram(parser);
+
+        Compiler_t compiler = createCompiler();
+        CompError_t compErr = compilerCompile(&compiler, program); 
+        TEST_INT(COMP_NO_ERROR, compErr, "Compiler error");
+
+        Bytecode_t bytecode = compilerGetBytecode(&compiler);   
+        Vm_t vm = createVm(&bytecode);
+        VmError_t vmErr = vmRun(&vm); 
+        TEST_STRING(testCases[i].expected, vmErr.str, "wrong VM error");
+
+        cleanupVmError(&vmErr);
+        cleanupVm(&vm);
+        cleanupCompiler(&compiler);
+        cleanupParser(&parser);
+        cleanupProgram(&program);
+        gcForceRun();
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(testIntegerArithmetic);
@@ -434,5 +526,7 @@ int main(void) {
     RUN_TEST(testFunctionsWithoutReturnValue);
     RUN_TEST(testCallingFunctionsWithBindings);
     RUN_TEST(testFirstClassFunctions);
+    RUN_TEST(testCallingFunctionsWithArgumentsAndLocalBindings);
+    RUN_TEST(testCallingFunctionsWithWrongArguments);
     return UNITY_END();
 }

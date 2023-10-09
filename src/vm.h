@@ -10,14 +10,23 @@
 #define STACK_SIZE 2048
 #define GLOBALS_SIZE 65536
 
-typedef enum VmError {
+typedef enum VmErrorCode {
     VM_NO_ERROR = 0, 
     VM_STACK_OVERFLOW,
     VM_UNSUPPORTED_TYPES,
     VM_UNSUPPORTED_OPERATOR,
     VM_INVALID_KEY, 
     VM_CALL_NON_FUNCTION,
+    VM_CALL_WRONG_PARAMS,
+} VmErrorCode_t;
+
+typedef struct VmError {
+    VmErrorCode_t code;
+    char* str; 
 } VmError_t;
+
+VmError_t createVmError(VmErrorCode_t code, char* str);
+void cleanupVmError(VmError_t* err); 
 
 typedef struct Vm {
 // Compiled constants 

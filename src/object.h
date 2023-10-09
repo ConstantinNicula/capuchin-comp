@@ -163,9 +163,10 @@ typedef struct CompiledFunction {
     OBJECT_BASE_ATTRS;
     Instructions_t instructions;
     uint32_t numLocals;
+    uint32_t numParameters;
 } CompiledFunction_t;
 
-CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLocals);
+CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLocals, uint32_t numParameters);
 CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj);
 
 char* compiledFunctionInspect(CompiledFunction_t* obj);

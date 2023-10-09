@@ -532,11 +532,12 @@ void testFunctionCalls() {
             }
         },
         {
-            .input = "let oneArg = fn(a) {}"
+            .input = "let oneArg = fn(a) { a }"
                      "oneArg(24);" ,
             .expConstants = {
                 _FUNC(
-                    codeMakeV(OP_RETURN),
+                    codeMakeV(OP_GET_LOCAL, 0), 
+                    codeMakeV(OP_RETURN_VALUE),
                     NULL
                 ),
                 _INT(24),
@@ -553,11 +554,16 @@ void testFunctionCalls() {
             }
         },
         {
-            .input = "let manyArg = fn(a, b, c) {}"
+            .input = "let manyArg = fn(a, b, c) {a; b; c;}"
                      "manyArg(24, 25, 26);" ,
             .expConstants = {
                 _FUNC(
-                    codeMakeV(OP_RETURN),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_POP),
+                    codeMakeV(OP_GET_LOCAL, 1),
+                    codeMakeV(OP_POP),
+                    codeMakeV(OP_GET_LOCAL, 2),
+                    codeMakeV(OP_RETURN_VALUE),
                     NULL
                 ),
                 _INT(24),
