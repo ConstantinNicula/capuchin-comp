@@ -148,7 +148,7 @@ void testStringObject(const char* expected, Object_t *obj) {
 }
 
 void testNullObject(Object_t* obj) {
-    TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_NULL, obj->type, "Object type not OBJECT_BOOLEAN");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_NULL, obj->type, "Object type not OBJECT_NULL");
 }
 
 void testIntegerArithmetic() {
@@ -512,6 +512,30 @@ void testCallingFunctionsWithWrongArguments() {
     }
 }
 
+void testLeak() {
+    TestCase_t vmTestCases[] = {
+        {
+            " true;",
+            _BOOL(true),
+        }
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
+void testLeak2() {
+    TestCase_t vmTestCases[] = {
+        {
+            "fn(){1;}();",
+            _INT(1),
+        }
+    };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(testIntegerArithmetic);
@@ -525,8 +549,8 @@ int main(void) {
     RUN_TEST(testFunctionsWithReturnStatement);
     RUN_TEST(testFunctionsWithoutReturnValue);
     RUN_TEST(testCallingFunctionsWithBindings);
-    RUN_TEST(testFirstClassFunctions);
     RUN_TEST(testCallingFunctionsWithArgumentsAndLocalBindings);
     RUN_TEST(testCallingFunctionsWithWrongArguments);
+    RUN_TEST(testFirstClassFunctions);
     return UNITY_END();
 }

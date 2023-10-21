@@ -5,6 +5,7 @@
 
 static void cleanupGlobals(Vm_t *vm); 
 static void cleanupStack(Vm_t* vm);
+static void cleanupConstants(Vm_t *vm); 
 static void cleanupFrames(Vm_t* vm);
 
 static void vmPushFrame(Vm_t *vm, Frame_t *f);
@@ -80,6 +81,7 @@ Vm_t createVm(Bytecode_t* bytecode) {
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
     Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
     CompiledFunction_t* mainFunction = createCompiledFunction(bytecode->instructions, 0, 0);
+    gcSetRef(mainFunction, GC_REF_COMPILE_CONSTANT);
     frames[0] = createFrame(mainFunction, 0);
 
     Object_t** globals = (s == NULL) ? callocChk(GLOBALS_SIZE * sizeof(Object_t*)) : s;
@@ -88,7 +90,8 @@ Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
 
         .stack = callocChk(STACK_SIZE * sizeof(Object_t*)),
         .sp = 0, 
-        
+        .lastPopped = NULL, 
+
         .externalStorage = (s != NULL),
         .globals = globals,
         
@@ -102,33 +105,44 @@ void cleanupVm(Vm_t *vm) {
 
     if (!vm->externalStorage) {
         cleanupGlobals(vm); 
-        cleanupVectorObjects(&vm->constants, NULL);
+        cleanupConstants(vm);
     }
 
     cleanupStack(vm);
     cleanupFrames(vm);
+
+    gcForceRun();
+}
+
+static void cleanupConstants(Vm_t *vm) {
+    uint32_t count = vectorObjectsGetCount(vm->constants);
+    Object_t** objs = vectorObjectsGetBuffer(vm->constants);
+    for(uint32_t i = 0; i < count; i++) {
+        gcClearRef(objs[i], GC_REF_COMPILE_CONSTANT);
+    }
+    cleanupVectorObjects(&vm->constants, NULL);
 }
 
 static void cleanupGlobals(Vm_t *vm) {
     uint16_t i = 0; 
     while (vm->globals[i] != NULL && i < GLOBALS_SIZE) {
-        gcFreeExtRef(vm->globals[i]);
+        gcClearRef(vm->globals[i], GC_REF_GLOBAL);
         i++;
     }
     free(vm->globals);
 }
 
 static void cleanupStack(Vm_t *vm) {
-    while (vm->sp) {
+    while (vm->sp) { 
         vmPop(vm);
     }
+    if(vm->lastPopped) gcClearRef(vm->lastPopped, GC_REF_STACK);
     free(vm->stack);
 }
 
 static void cleanupFrames(Vm_t* vm) {
-    for (uint32_t i = 0; i < vm->frameIndex; i++) {
-        cleanupFrame(&(vm->frames[i]));
-    }
+    // first frame is created internally, so fn ref must be cleared manually.
+    gcClearRef(vm->frames[0].fn, GC_REF_COMPILE_CONSTANT); 
     free(vm->frames);
 }
 
@@ -156,7 +170,7 @@ Object_t* vmStackTop(Vm_t *vm) {
 }
 
 Object_t* vmLastPoppedStackElem(Vm_t *vm) {
-    return vm->stack[vm->sp];
+    return vm->lastPopped;
 }
 
 VmError_t vmRun(Vm_t *vm) {
@@ -262,6 +276,8 @@ VmError_t vmRun(Vm_t *vm) {
         if (err.code != VM_NO_ERROR) {
             break;
         }
+
+        gcForceRun();
     }
     return err;
 }
@@ -440,7 +456,6 @@ static VmError_t vmBuildHash(Vm_t* vm, uint16_t numElements, Hash_t** hash) {
         Object_t* value = vm->stack[i+1];
 
         // check if key is hashable 
-        // FIXME: this should emit a proper error code.  
         if (!objectIsHashable(key)) {
             return createVmError(VM_INVALID_KEY, strFormat("unusable as hash key: %s", 
                 objectTypeToString(key->type)));
@@ -537,8 +552,10 @@ static VmError_t vmExecuteOpSetGlobal(Vm_t* vm, int32_t* ip) {
     *ip += 2;
 
     if (vm->globals[globalIndex] != NULL)
-        gcFreeExtRef(vm->globals[globalIndex]);
-    vm->globals[globalIndex] = gcGetExtRef(vmPop(vm));
+        gcClearRef(vm->globals[globalIndex], GC_REF_GLOBAL);
+
+    vm->globals[globalIndex] = vmPop(vm);
+    gcSetRef(vm->globals[globalIndex], GC_REF_GLOBAL);
     return createVmError(VM_NO_ERROR, NULL);
 }
 
@@ -569,21 +586,36 @@ static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
 
     Frame_t frame = createFrame(fn, vm->sp - numArgs);
     vmPushFrame(vm, &frame);
-    vm->sp = frame.basePointer + fn->numLocals;
+
+    // zero out stack values and update stack pointer
+    uint16_t newSp = frame.basePointer + fn->numLocals;
+    for(uint16_t i = vm->sp; i < newSp; i++) {
+        vm->stack[i] = NULL;
+    }     
+    vm->sp = newSp;
+
     return createVmError(VM_NO_ERROR, NULL);
 }
 
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm) {
     Object_t* returnValue = vmPop(vm);
 
+    // cleanup stack (flag for deletion), update stack pointer
     Frame_t frame = vmPopFrame(vm);
+    for (uint16_t i = frame.basePointer-1; i < vm->sp; i++) {
+        gcClearRef(vm->stack[i], GC_REF_STACK);
+    }
     vm->sp = frame.basePointer - 1;
 
     return vmPush(vm, returnValue);
 }
 
 static VmError_t vmExecuteOpReturn(Vm_t* vm) {
+    // cleanup stack (flag for deletion), update stack pointer
     Frame_t frame = vmPopFrame(vm);
+    for (uint16_t i = frame.basePointer-1; i < vm->sp; i++) {
+        gcClearRef(vm->stack[i], GC_REF_STACK);
+    }
     vm->sp = frame.basePointer - 1;
 
     return vmPush(vm, (Object_t*)createNull());
@@ -595,7 +627,10 @@ static VmError_t vmExecuteOpSetLocal(Vm_t* vm, int32_t* ip) {
     *ip += 1;
 
     Frame_t* frame = vmCurrentFrame(vm);
-    vm->stack[frame->basePointer + localIndex] = vmPop(vm);
+    uint16_t stackIndex = frame->basePointer + localIndex;
+    vm->stack[stackIndex] = vmPop(vm);
+    gcSetRef(vm->stack[stackIndex], GC_REF_STACK);
+
     return createVmError(VM_NO_ERROR, NULL); 
 }
 
@@ -612,16 +647,17 @@ static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
     if (vm->sp >= STACK_SIZE) {
         return createVmError(VM_STACK_OVERFLOW, strFormat("stack overflow sp(%d)", vm->sp));
     }
+    gcSetRef(obj, GC_REF_STACK);
     vm->stack[vm->sp] = obj;
     vm->sp++;
     return createVmError(VM_NO_ERROR, NULL);
 }
 
 static Object_t* vmPop(Vm_t* vm) {
-    Object_t* obj = vm->stack[vm->sp-1]; 
+    if (vm->lastPopped) gcClearRef(vm->lastPopped, GC_REF_STACK);
+    vm->lastPopped = vm->stack[vm->sp-1]; 
     vm->sp--;
-    
-    return obj;
+    return vm->lastPopped;
 }
 
 static bool vmIsTruthy(Object_t* obj) {

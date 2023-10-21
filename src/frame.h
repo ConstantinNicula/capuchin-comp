@@ -13,5 +13,4 @@ typedef struct Frame {
 
 Frame_t createFrame(CompiledFunction_t* fn, uint32_t basePointer);
 Instructions_t frameGetInstructions(Frame_t* frame);
-void cleanupFrame(Frame_t* frame); 
 #endif

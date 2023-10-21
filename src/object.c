@@ -13,7 +13,6 @@ const char* tokenTypeStrings[_OBJECT_TYPE_CNT] = {
     [OBJECT_BOOLEAN]="BOOLEAN", 
     [OBJECT_STRING]="STRING",
     [OBJECT_NULL]="NULL",
-    [OBJECT_FUNCTION]="FUNCTION",
     [OBJECT_COMPILED_FUNCTION]="COMPILED_FUNCTION",
     [OBJECT_ERROR]="ERROR",
     [OBJECT_BUILTIN]="BUILTIN",
@@ -41,7 +40,6 @@ static ObjectInspectFn_t objectInsepctFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectInspectFn_t)nulllInspect,
     [OBJECT_RETURN_VALUE]=(ObjectInspectFn_t)returnValueInspect,
     [OBJECT_ERROR]=(ObjectInspectFn_t)errorInspect,
-    [OBJECT_FUNCTION]=(ObjectInspectFn_t)functionInspect,
     [OBJECT_COMPILED_FUNCTION]=(ObjectInspectFn_t)compiledFunctionInspect,
     [OBJECT_BUILTIN]=(ObjectInspectFn_t)builtinInspect,
     [OBJECT_ARRAY]=(ObjectInspectFn_t)arrayInspect,
@@ -55,7 +53,6 @@ static ObjectCopyFn_t objectCopyFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectCopyFn_t)copyNull,
     [OBJECT_RETURN_VALUE]=(ObjectCopyFn_t)copyReturnValue,
     [OBJECT_ERROR]=(ObjectCopyFn_t)copyError,
-    [OBJECT_FUNCTION]=(ObjectCopyFn_t)copyFunction,
     [OBJECT_COMPILED_FUNCTION]=(ObjectCopyFn_t)copyCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectCopyFn_t)copyBuiltin,
     [OBJECT_ARRAY]=(ObjectCopyFn_t)copyArray,
@@ -111,7 +108,7 @@ void gcMarkObject(Object_t* obj);
  ************************************/
 
 Integer_t* createInteger(int64_t value) {
-    Integer_t* obj = gcMalloc(sizeof(Integer_t), GC_DATA_OBJECT);
+    Integer_t* obj = gcMalloc(sizeof(Integer_t));
     
     *obj = (Integer_t){
         .type = OBJECT_INTEGER,
@@ -145,7 +142,7 @@ void gcMarkInteger(Integer_t* obj) {
  ************************************/
 
 Boolean_t* createBoolean(bool value) {
-    Boolean_t* ret = gcMalloc(sizeof(Boolean_t), GC_DATA_OBJECT);
+    Boolean_t* ret = gcMalloc(sizeof(Boolean_t));
     *ret = (Boolean_t) {
         .type = OBJECT_BOOLEAN,
         .value = value
@@ -177,7 +174,7 @@ void gcMarkBoolean(Boolean_t* obj) {
  ************************************/
 
 String_t* createString(const char* value) {
-    String_t* ret = gcMalloc(sizeof(String_t), GC_DATA_OBJECT);
+    String_t* ret = gcMalloc(sizeof(String_t));
     *ret = (String_t) {
         .type = OBJECT_STRING,
         .value = cloneString(value)
@@ -207,7 +204,7 @@ void gcMarkString(Boolean_t* obj) {
  *        NULL OBJECT TYPE          *
  ************************************/
 Null_t* createNull() {
-    Null_t* ret = gcMalloc(sizeof(Null_t), GC_DATA_OBJECT);
+    Null_t* ret = gcMalloc(sizeof(Null_t));
     *ret = (Null_t) {.type = OBJECT_NULL};
     return ret;
 }
@@ -235,7 +232,7 @@ void gcMarkNull(Null_t* obj) {
  ************************************/
 
 ReturnValue_t* createReturnValue(Object_t* value) {
-    ReturnValue_t* ret = gcMalloc(sizeof(ReturnValue_t), GC_DATA_OBJECT);
+    ReturnValue_t* ret = gcMalloc(sizeof(ReturnValue_t));
     *ret= (ReturnValue_t) {
         .type = OBJECT_RETURN_VALUE, 
         .value = value
@@ -260,8 +257,8 @@ void gcCleanupReturnValue(ReturnValue_t** obj) {
 }
 
 void gcMarkReturnValue(ReturnValue_t* obj) {
-    if (!gcMarkedAsUsed(obj->value)) {
-        gcMarkUsed(obj->value);
+    if (!gcHasRef(obj->value, GC_REF_INTERNAL)) {
+        gcSetRef(obj->value, GC_REF_INTERNAL);
         gcMarkObject(obj->value);
     }
 }
@@ -271,7 +268,7 @@ void gcMarkReturnValue(ReturnValue_t* obj) {
  ************************************/
 
 Error_t* createError(char* message) {
-    Error_t* err = gcMalloc(sizeof(Error_t), GC_DATA_OBJECT);
+    Error_t* err = gcMalloc(sizeof(Error_t));
 
     *err = (Error_t) {
         .type = OBJECT_ERROR,
@@ -303,79 +300,10 @@ void gcMarkError(Error_t* err) {
 
 
 /************************************ 
- *    FUNCTION OBJECT TYPE          *
- ************************************/
-
-Function_t* createFunction(VectorExpressions_t* params, BlockStatement_t* body, Environment_t* env) {
-    Function_t* func = gcMalloc(sizeof(Function_t), GC_DATA_OBJECT);
-    *func = (Function_t) {
-        .type = OBJECT_FUNCTION,
-        .parameters = copyVectorExpressions(params, copyExpression),
-        .body = copyBlockStatement(body),
-        .environment = env, // weak copy to env
-    };
-
-    return func;
-}
-
-void gcCleanupFunction(Function_t** obj) {
-    if(!(*obj)) 
-        return;
-
-    // full clean because these are owned by object & not by GC 
-    cleanupVectorExpressions(&(*obj)->parameters, cleanupExpression);
-    cleanupBlockStatement(&(*obj)->body);
-    
-    gcFree(*obj);
-    *obj = NULL;
-}
-
-extern void gcMarkEnvironment(Environment_t*env);
-
-void gcMarkFunction(Function_t* obj) { 
-    if (!gcMarkedAsUsed(obj->environment)) {
-        gcMarkUsed(obj->environment);
-        gcMarkEnvironment(obj->environment);
-    }
-}
-
-Function_t* copyFunction(const Function_t* obj) {
-    return createFunction(obj->parameters, obj->body, obj->environment);
-}
-
-char* functionInspect(Function_t* obj) {
-    Strbuf_t* sbuf = createStrbuf();
-    strbufWrite(sbuf, "fn(");
-    
-    uint32_t cnt = vectorExpressionsGetCount(obj->parameters);
-    Identifier_t** params = (Identifier_t**) vectorExpressionsGetBuffer(obj->parameters);
-    for (uint32_t i = 0; i < cnt; i++) {
-        strbufConsume(sbuf, identifierToString(params[i]));
-        if (i !=  (cnt - 1))
-            strbufWrite(sbuf, ",");
-    }
-    
-    strbufWrite(sbuf, ") {\n");
-    strbufConsume(sbuf, blockStatementToString(obj->body));
-    strbufWrite(sbuf, "\n}");
-
-    return detachStrbuf(&sbuf);
-}
-
-uint32_t functionGetParameterCount(Function_t* obj) {
-    return vectorExpressionsGetCount(obj->parameters);
-}
-
-Identifier_t** functionGetParameters(Function_t* obj) {
-    return (Identifier_t**)vectorExpressionsGetBuffer(obj->parameters);
-}
-
-
-/************************************ 
  *  COMP FUNCTION OBJECT TYPE       *
  ************************************/
 CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLocals, uint32_t numParameters) {
-    CompiledFunction_t* obj = gcMalloc(sizeof(CompiledFunction_t), GC_DATA_OBJECT);
+    CompiledFunction_t* obj = gcMalloc(sizeof(CompiledFunction_t));
     *obj = (CompiledFunction_t) {
         .type = OBJECT_COMPILED_FUNCTION,
         .instructions = instr,
@@ -412,7 +340,7 @@ char* compiledFunctionInspect(CompiledFunction_t* obj) {
  ************************************/
 
 Array_t* createArray() {
-    Array_t* arr = gcMalloc(sizeof(Array_t), GC_DATA_OBJECT);
+    Array_t* arr = gcMalloc(sizeof(Array_t));
     *arr = (Array_t) {
         .type = OBJECT_ARRAY,
         .elements = NULL
@@ -465,8 +393,8 @@ void gcMarkArray(Array_t* arr) {
     uint32_t cnt = arrayGetElementCount(arr);
     Object_t** elems = arrayGetElements(arr);
     for (uint32_t i = 0; i < cnt; i++) {
-        if (!gcMarkedAsUsed(elems[i])) {
-            gcMarkUsed(elems[i]);
+        if (!gcHasRef(elems[i], GC_REF_INTERNAL)) {
+            gcSetRef(elems[i], GC_REF_INTERNAL);
             gcMarkObject(elems[i]);
         }
     } 
@@ -492,7 +420,7 @@ void cleanupHashPair(HashPair_t** pair) {
 }
 
 Hash_t* createHash() {
-    Hash_t* hash = gcMalloc(sizeof(Hash_t), GC_DATA_OBJECT);
+    Hash_t* hash = gcMalloc(sizeof(Hash_t));
     *hash = (Hash_t) {
         .type = OBJECT_HASH,
         .pairs = createHashMap()
@@ -501,7 +429,7 @@ Hash_t* createHash() {
 }
 
 Hash_t* copyHash(const Hash_t* obj) {
-    Hash_t* newHash = gcMalloc(sizeof(Hash_t), GC_DATA_OBJECT);
+    Hash_t* newHash = gcMalloc(sizeof(Hash_t));
     *newHash = (Hash_t) {
         .type = OBJECT_HASH,
         .pairs = copyHashMap(obj->pairs, (HashMapElemCopyFn_t) copyObject)
@@ -555,13 +483,13 @@ void gcMarkHash(Hash_t* obj) {
     HashMapEntry_t* entry = hashMapIterGetNext(obj->pairs, &iter);
     while(entry){
         HashPair_t* pair = (HashPair_t*)entry->value; 
-        if (!gcMarkedAsUsed(pair->key)) {
-            gcMarkUsed(pair->key);
+        if (!gcHasRef(pair->key, GC_REF_INTERNAL)) {
+            gcSetRef(pair->key, GC_REF_INTERNAL);
             gcMarkObject(pair->key);
         }
         
-        if (!gcMarkedAsUsed(pair->value)) {
-            gcMarkUsed(pair->value);
+        if (!gcHasRef(pair->value, GC_REF_INTERNAL)) {
+            gcSetRef(pair->value, GC_REF_INTERNAL);
             gcMarkObject(pair->value);
         }
         entry = hashMapIterGetNext(obj->pairs, &iter);
@@ -573,7 +501,7 @@ void gcMarkHash(Hash_t* obj) {
  ************************************/
 
 Builtin_t* createBuiltin(BuiltinFunction_t func) {
-    Builtin_t* builtin = gcMalloc(sizeof(Builtin_t), GC_DATA_OBJECT);
+    Builtin_t* builtin = gcMalloc(sizeof(Builtin_t));
     *builtin = (Builtin_t) {
         .type = OBJECT_BUILTIN, 
         .func = func
@@ -613,7 +541,6 @@ static ObjectCleanupFn_t objectCleanupFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectCleanupFn_t)gcCleanupNull,
     [OBJECT_RETURN_VALUE]=(ObjectCleanupFn_t)gcCleanupReturnValue,
     [OBJECT_ERROR]=(ObjectCleanupFn_t)gcCleanupError,
-    [OBJECT_FUNCTION]=(ObjectCleanupFn_t)gcCleanupFunction,
     [OBJECT_COMPILED_FUNCTION]=(ObjectCleanupFn_t)gcCleanupCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectCleanupFn_t)gcCleanupBuiltin,
     [OBJECT_ARRAY]=(ObjectCleanupFn_t)gcCleanupArray,
@@ -627,7 +554,6 @@ static ObjectGcMarkFn_t objectMarkFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectGcMarkFn_t)gcMarkNull,
     [OBJECT_RETURN_VALUE]=(ObjectGcMarkFn_t)gcMarkReturnValue,
     [OBJECT_ERROR]=(ObjectGcMarkFn_t)gcMarkError,
-    [OBJECT_FUNCTION]=(ObjectGcMarkFn_t)gcMarkFunction,
     [OBJECT_COMPILED_FUNCTION]=(ObjectGcMarkFn_t)gcMarkCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectGcMarkFn_t)gcMarkBuiltin,
     [OBJECT_ARRAY]=(ObjectGcMarkFn_t)gcMarkArray,

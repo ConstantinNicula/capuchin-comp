@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "compiler.h"
+#include "gc.h"
 
 IMPL_VECTOR_TYPE(CompilationScope, CompilationScope_t);
 
@@ -94,7 +95,7 @@ static void compilerChangeOperand(Compiler_t* comp, uint32_t pos, int operand);
 Bytecode_t compilerGetBytecode(Compiler_t* comp) {
     Bytecode_t bytecode = {
         .instructions = copySliceByte(*compilerCurrentInstructions(comp)),
-        .constants = (!comp->externalStorage) ? copyVectorObjects(comp->constants, copyObject) : comp->constants,
+        .constants = (!comp->externalStorage) ? copyVectorObjects(comp->constants, NULL) : comp->constants,
     };
 
     return bytecode;
@@ -130,6 +131,7 @@ static SliceByte_t* compilerCurrentInstructions(Compiler_t* comp) {
 }
 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj) {
+    gcSetRef(obj, GC_REF_COMPILE_CONSTANT);
     vectorObjectsAppend(comp->constants, obj);
     return vectorObjectsGetCount(comp->constants) - 1; 
 }

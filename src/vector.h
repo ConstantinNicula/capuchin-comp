@@ -48,15 +48,21 @@ _VEC_TYPE(NAME) * createVector##NAME() {                                        
 }                                                                                              \
 \
 _VEC_TYPE(NAME) * copyVector##NAME(_VEC_TYPE(NAME) * vec, _VEC_COPY_FN(NAME) copyFn) {         \
-    if (!vec || !copyFn) return NULL;                                                          \
+    if (!vec) return NULL;                                                                     \
 \
     _VEC_TYPE(NAME) * newVec = createVector##NAME();                                           \
     newVec->buf = mallocChk( sizeof(TYPE) * vec->cap);                                         \
     newVec->cap = vec->cap;                                                                    \
     newVec->cnt = vec->cnt;                                                                    \
 \
-    for (uint32_t i = 0; i < vec->cnt; i++) {                                                  \
-        newVec->buf[i] = copyFn(vec->buf[i]);                                                  \
+    if (copyFn) {                                                                              \
+        for (uint32_t i = 0; i < vec->cnt; i++) {                                              \
+            newVec->buf[i] = copyFn(vec->buf[i]);                                              \
+        }                                                                                      \
+    } else {                                                                                   \
+        for (uint32_t i = 0; i < vec->cnt; i++) {                                              \
+            newVec->buf[i] = vec->buf[i];                                                      \
+        }                                                                                      \
     }                                                                                          \
     return newVec;                                                                             \
 }                                                                                              \

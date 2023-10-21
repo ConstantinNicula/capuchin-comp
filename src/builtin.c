@@ -12,7 +12,7 @@ Object_t* pushBuiltin(VectorObjects_t* args);
 Object_t* putsBuiltin(VectorObjects_t* args);
 Object_t* printfBuiltin(VectorObjects_t* args);
 
-
+/*
 void registerBuiltinFunctions(Environment_t* env) {
     environmentSet(env, "len", (Object_t*)createBuiltin(lenBuiltin));    
     environmentSet(env, "first", (Object_t*)createBuiltin(firstBuiltin));    
@@ -22,6 +22,7 @@ void registerBuiltinFunctions(Environment_t* env) {
     environmentSet(env, "puts", (Object_t*)createBuiltin(putsBuiltin));    
     environmentSet(env, "printf", (Object_t*)createBuiltin(printfBuiltin));    
 }
+*/
 
 Object_t* lenBuiltin(VectorObjects_t* args) {
     if (vectorObjectsGetCount(args) != 1) {

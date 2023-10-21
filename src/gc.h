@@ -4,21 +4,19 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-typedef enum GCDataType{
-    GC_DATA_OBJECT, 
-    GC_DATA_ENVIRONENT,
-    _GC_DATA_TYPE_CNT
-} GCDataType_t;
+typedef enum GCRefType{
+    GC_REF_INTERNAL, 
+    GC_REF_COMPILE_CONSTANT, 
+    GC_REF_GLOBAL, 
+    GC_REF_STACK,
+} GCRefType_t;
 
-
-void* gcMalloc(size_t size, GCDataType_t type);
+void* gcMalloc(size_t size);
 void gcFree(void* ptr);
+
+void gcSetRef(void* ptr, GCRefType_t refType);
+void gcClearRef(void* ptr, GCRefType_t refType);
+bool gcHasRef(void* ptr, GCRefType_t refType);
+
 void gcForceRun();
-
-void gcMarkUsed(void* ptr);
-bool gcMarkedAsUsed(void*ptr);
-
-void* gcGetExtRef(void* ptr);
-void gcFreeExtRef(void* ptr);
-
 #endif

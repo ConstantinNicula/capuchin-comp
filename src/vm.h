@@ -35,6 +35,7 @@ typedef struct Vm {
 // Stack variables  
     Object_t** stack;
     uint16_t sp;
+    Object_t* lastPopped;
 
 // Global storage  
     Object_t** globals;

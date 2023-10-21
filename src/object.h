@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "ast.h"
-#include "env.h"
 #include "code.h"
+#include "hmap.h"
 
 typedef struct Object Object_t; 
 DEFINE_VECTOR_TYPE(Objects, Object_t*);
@@ -17,7 +17,6 @@ typedef enum ObjectType{
     OBJECT_NULL,
     OBJECT_RETURN_VALUE,
     OBJECT_ERROR,
-    OBJECT_FUNCTION,
     OBJECT_COMPILED_FUNCTION,
     OBJECT_STRING,
     OBJECT_BUILTIN,
@@ -136,24 +135,6 @@ Error_t* copyError(const Error_t* obj);
 
 char* errorInspect(Error_t* obj);
 
-/************************************ 
- *    FUNCTION OBJECT TYPE          *
- ************************************/
-typedef struct Environment Environment_t;
-
-typedef struct Function {
-    OBJECT_BASE_ATTRS;
-    VectorExpressions_t* parameters;
-    BlockStatement_t* body;
-    Environment_t* environment;
-} Function_t;
-
-Function_t* createFunction(VectorExpressions_t* params, BlockStatement_t* body, Environment_t* env);
-Function_t* copyFunction(const Function_t* obj);
-
-char* functionInspect(Function_t* obj);
-uint32_t functionGetParameterCount(Function_t* obj);
-Identifier_t** functionGetParameters(Function_t* obj);
 
 /************************************ 
  *  COMP FUNCTION OBJECT TYPE       *
