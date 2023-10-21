@@ -61,6 +61,13 @@ Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name) {
     return sym;
 }
 
+Symbol_t* symbolTableDefineBuiltin(SymbolTable_t* symTable, uint32_t index, const char* name) {
+    Symbol_t* sym = createSymbol(name, SCOPE_BUILTIN, index);
+    hashMapInsert(symTable->store, name, sym);
+    return sym;
+}
+
+
 
 Symbol_t* symbolTableResolve(SymbolTable_t* symTable, const char* name) {
     Symbol_t* sym = hashMapGet(symTable->store, name);

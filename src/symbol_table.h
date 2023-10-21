@@ -6,6 +6,7 @@
 typedef enum SymbolScope {
     SCOPE_GLOBAL,
     SCOPE_LOCAL,
+    SCOPE_BUILTIN,
     _NUM_SYMBOL_SCOPES
 } SymbolScope_t;
 
@@ -31,6 +32,7 @@ SymbolTable_t* createEnclosedSymbolTable(SymbolTable_t* outer);
 void cleanupSymbolTable(SymbolTable_t* symTable);
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name);
+Symbol_t* symbolTableDefineBuiltin(SymbolTable_t* symTable, uint32_t index, const char* name);
 Symbol_t* symbolTableResolve(SymbolTable_t* symTable, const char* name);
 
 #endif

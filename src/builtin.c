@@ -3,7 +3,6 @@
 #include "sbuf.h"
 #include "utils.h"
 
-
 Object_t* lenBuiltin(VectorObjects_t* args);
 Object_t* firstBuiltin(VectorObjects_t* args);
 Object_t* lastBuiltin(VectorObjects_t* args);
@@ -12,17 +11,31 @@ Object_t* pushBuiltin(VectorObjects_t* args);
 Object_t* putsBuiltin(VectorObjects_t* args);
 Object_t* printfBuiltin(VectorObjects_t* args);
 
-/*
-void registerBuiltinFunctions(Environment_t* env) {
-    environmentSet(env, "len", (Object_t*)createBuiltin(lenBuiltin));    
-    environmentSet(env, "first", (Object_t*)createBuiltin(firstBuiltin));    
-    environmentSet(env, "last", (Object_t*)createBuiltin(lastBuiltin));    
-    environmentSet(env, "rest", (Object_t*)createBuiltin(restBuiltin));    
-    environmentSet(env, "push", (Object_t*)createBuiltin(pushBuiltin));    
-    environmentSet(env, "puts", (Object_t*)createBuiltin(putsBuiltin));    
-    environmentSet(env, "printf", (Object_t*)createBuiltin(printfBuiltin));    
+static BuiltinFunctionDef_t builtinDefs[] = {
+    {"len", lenBuiltin},
+    {"puts", putsBuiltin},
+    {"first", firstBuiltin},
+    {"last", lastBuiltin},
+    {"rest", restBuiltin},
+    {"push", pushBuiltin},
+    {"printf", printfBuiltin},
+    {NULL, NULL}
+};
+
+BuiltinFn_t getBuiltinByName(const char* name) {
+    uint32_t i = 0; 
+    while (builtinDefs[i].name) {
+        if (strcmp(name, builtinDefs[i].name) == 0) {
+            return  builtinDefs[i].fn;
+        }
+        i++;
+    }
+    return NULL;
 }
-*/
+
+BuiltinFunctionDef_t* getBuiltinDefs() {
+    return builtinDefs;
+}
 
 Object_t* lenBuiltin(VectorObjects_t* args) {
     if (vectorObjectsGetCount(args) != 1) {

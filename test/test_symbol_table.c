@@ -149,6 +149,41 @@ void testDefine() {
     cleanupSymbolTable(global);
 }
 
+void testDefineResolveBuiltin() {
+    SymbolTable_t* global = createSymbolTable();
+    SymbolTable_t* firstLocal = createEnclosedSymbolTable(global);
+    SymbolTable_t* secondLocal = createEnclosedSymbolTable(firstLocal);
+
+    Symbol_t expected[] = {
+        {.name="a", .scope=SCOPE_BUILTIN, .index=0},
+        {.name="c", .scope=SCOPE_BUILTIN, .index=1},
+        {.name="e", .scope=SCOPE_BUILTIN, .index=2},
+        {.name="f", .scope=SCOPE_BUILTIN, .index=3},
+    };
+    int numExpected = sizeof(expected) / sizeof(expected[0]);
+
+    SymbolTable_t* tables[] = { 
+        global, firstLocal, secondLocal
+    };
+    int numTables = sizeof(tables) / sizeof(tables[0]);
+
+    for (int j = 0; j < numExpected; j++) {
+        symbolTableDefineBuiltin(global, j, expected[j].name);
+    }
+
+    for (int i = 0; i < numTables; i++) {
+        for (int j = 0; j < numExpected; j++) {
+            Symbol_t* result = symbolTableResolve(tables[i], expected[j].name);
+            compareSymbol(&expected[j], result);
+        }
+   }
+
+    cleanupSymbolTable(secondLocal);
+    cleanupSymbolTable(firstLocal);
+    cleanupSymbolTable(global);
+}
+
+
 bool compareSymbol(Symbol_t* exp, Symbol_t* actual) {
     TEST_NOT_NULL(actual, "Symbol is null, could not be resolved!");
     TEST_STRING(exp->name, actual->name, "Wrong symbol name");
@@ -165,5 +200,6 @@ int main(void) {
    RUN_TEST(testResolveLocal);
    RUN_TEST(testResolveNestedLocal);
    RUN_TEST(testDefine);
+   RUN_TEST(testDefineResolveBuiltin);
    return UNITY_END();
 }

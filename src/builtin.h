@@ -3,5 +3,15 @@
 
 #include "object.h"
 
+typedef Object_t* (*BuiltinFn_t) (VectorObjects_t*);
+
+typedef struct BuiltinFunctionDef {
+    const char* name; 
+    BuiltinFn_t fn; 
+} BuiltinFunctionDef_t;
+
+
+BuiltinFn_t getBuiltinByName(const char* name); 
+BuiltinFunctionDef_t* getBuiltinDefs();
 
 #endif

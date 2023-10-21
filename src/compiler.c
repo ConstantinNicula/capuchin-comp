@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "compiler.h"
+#include "builtin.h"
 #include "gc.h"
 
 IMPL_VECTOR_TYPE(CompilationScope, CompilationScope_t);
@@ -11,9 +12,19 @@ Compiler_t createCompiler() {
         .lastInstruction = {0},
         .previousInstruction = {0},
     });
+
+    SymbolTable_t* symbolTable = createSymbolTable();
+    BuiltinFunctionDef_t* builtinDefs = getBuiltinDefs();
+    
+    uint32_t i = 0;
+    while (builtinDefs[i].name) {
+        symbolTableDefineBuiltin(symbolTable, i, builtinDefs[i].name);
+        i++;
+    }
+
     return (Compiler_t) {
         .constants = createVectorObjects(),
-        .symbolTable = createSymbolTable(),
+        .symbolTable = symbolTable,
         .externalStorage = false,
         .scopes = scopes, 
         .scopeIndex = 0, 
@@ -81,6 +92,8 @@ static CompError_t compilerCompileIndexExpression(Compiler_t* comp, IndexExpress
 static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLiteral_t* func);
 static CompError_t compilerCompileCallExpression(Compiler_t* comp, CallExpression_t* expression);
 
+static void compilerLoadSymbol(Compiler_t* comp, Symbol_t* sym);
+
 static SliceByte_t* compilerCurrentInstructions(Compiler_t* comp);
 static uint32_t compilerAddInstruction(Compiler_t* comp, SliceByte_t ins); 
 static uint32_t compilerAddConstant(Compiler_t* comp, Object_t* obj); 
@@ -125,6 +138,20 @@ Instructions_t compilerLeaveScope(Compiler_t* comp) {
     return instructions;
 }
 
+
+static void compilerLoadSymbol(Compiler_t* comp, Symbol_t* sym) {
+    switch(sym->scope) {
+        case SCOPE_LOCAL:
+            compilerEmit(comp, OP_GET_LOCAL, (const int[]) {sym->index});
+            break;
+        case SCOPE_GLOBAL:
+            compilerEmit(comp, OP_GET_GLOBAL, (const int[]) {sym->index});
+            break;
+        case SCOPE_BUILTIN:
+            compilerEmit(comp, OP_GET_BUILTIN, (const int[]) {sym->index}); 
+        break;
+    }
+}
 
 static SliceByte_t* compilerCurrentInstructions(Compiler_t* comp) {
     return &(comp->scopes->buf[comp->scopeIndex].instructions);
@@ -477,11 +504,7 @@ static CompError_t compilerCompileIfExpression(Compiler_t* comp, IfExpression_t*
 static CompError_t compilerCompileIdentifier(Compiler_t* comp, Identifier_t* ident) {
     Symbol_t* symbol = symbolTableResolve(comp->symbolTable, ident->value);
     if (!symbol) return COMP_UNDEFINED_VARIABLE;
-    if (symbol->scope == SCOPE_GLOBAL) {
-        compilerEmit(comp, OP_GET_GLOBAL, (const int[]){symbol->index});
-    } else {
-        compilerEmit(comp, OP_GET_LOCAL, (const int[]){symbol->index});
-    }
+    compilerLoadSymbol(comp, symbol); 
     return COMP_NO_ERROR;
 }
 

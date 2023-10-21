@@ -44,6 +44,8 @@ static OpDefinition_t definitions[_OP_COUNT] = {
     [OP_SET_LOCAL] = {"OpSetLocal", .argCount=1, .argWidths={1}},
     [OP_GET_LOCAL] = {"OpGetLocal", .argCount=1, .argWidths={1}},
 
+    [OP_GET_BUILTIN] = {"OpGetBuiltin", .argCount=1, .argWidths={1}},
+
     [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };
 

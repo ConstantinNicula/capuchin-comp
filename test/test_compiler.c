@@ -669,6 +669,51 @@ void testLetStatementScopes() {
 
 }
 
+void testBuiltins() {
+    TestCase_t testCases[] = {
+        {
+            .input = "len([]);"
+                     "push([], 1);",
+            .expConstants = { _INT(1), _END },
+            .expInstructions = {
+                codeMakeV(OP_GET_BUILTIN, 0),
+                codeMakeV(OP_ARRAY, 0),
+                codeMakeV(OP_CALL, 1),
+                codeMakeV(OP_POP),
+                codeMakeV(OP_GET_BUILTIN, 5),
+                codeMakeV(OP_ARRAY, 0),
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CALL, 2),
+                codeMakeV(OP_POP), 
+                NULL
+            }
+        },
+        {
+            .input = "fn() {len([])}",
+            .expConstants = { 
+                _FUNC(
+                    codeMakeV(OP_GET_BUILTIN, 0),
+                    codeMakeV(OP_ARRAY, 0),
+                    codeMakeV(OP_CALL, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        
+   };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+
+}
+
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
     for (int i = 0; i < numTc; i++)
@@ -807,5 +852,6 @@ int main(void)
     RUN_TEST(testFunctions);
     RUN_TEST(testFunctionCalls);
     RUN_TEST(testLetStatementScopes);
+    RUN_TEST(testBuiltins);
     return UNITY_END();
 }
