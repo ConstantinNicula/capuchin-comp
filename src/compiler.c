@@ -61,7 +61,7 @@ void cleanupCompiler(Compiler_t* comp) {
     // cleanup symtable and constants only if owned 
     if (!comp->externalStorage) {
         cleanupSymbolTable(comp->symbolTable);
-        cleanupVectorObjects(&comp->constants, NULL); 
+        cleanupVectorObjects(&comp->constants, NULL);
     }
 }
 
@@ -149,7 +149,9 @@ static void compilerLoadSymbol(Compiler_t* comp, Symbol_t* sym) {
             break;
         case SCOPE_BUILTIN:
             compilerEmit(comp, OP_GET_BUILTIN, (const int[]) {sym->index}); 
-        break;
+            break;
+        default:
+            break;
     }
 }
 

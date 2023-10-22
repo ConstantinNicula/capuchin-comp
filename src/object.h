@@ -194,7 +194,7 @@ HashPair_t* hashGetPair(Hash_t* obj, Object_t* key);
 
 
 /************************************ 
- *     BULITIN OBJECT TYPE          *
+ *     BUILTIN OBJECT TYPE          *
  ************************************/
 
 typedef Object_t* (*BuiltinFunction_t) (VectorObjects_t*);

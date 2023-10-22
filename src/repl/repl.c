@@ -9,6 +9,7 @@
 #include "../compiler.h"
 #include "../vm.h"
 #include "../gc.h"
+#include "../builtin.h"
 
 #define PROMPT ">> "
 
@@ -47,24 +48,48 @@ void evalInput(const char* input, SymbolTable_t* symTable, VectorObjects_t* cons
     } 
 
     Object_t* stackTop = vmLastPoppedStackElem(&vm);
-    printf("%s\n", objectInspect(stackTop));
-    // TO DO: fix memory leak (nothing is gc'd at the moment)
-    //gcForceRun();
+    char* res =  objectInspect(stackTop);
+    printf("%s\n", res);
+    free(res);
 
-vm_err: 
+vm_err:
+    cleanupVmError(&vmErr);
     cleanupVm(&vm);
 comp_err: 
     cleanupCompiler(&comp);
 parser_err: 
     cleanupParser(&parser);
     cleanupProgram(&program);
+    gcForceRun();
+}
+
+SymbolTable_t* allocSymbolTable() {
+    SymbolTable_t* symTable = createSymbolTable(); 
+    BuiltinFunctionDef_t* builtinDefs = getBuiltinDefs();
+
+    uint32_t i = 0;
+    while (builtinDefs[i].name) {
+        symbolTableDefineBuiltin(symTable, i, builtinDefs[i].name);
+        i++;
+    }
+
+    return symTable;
+}
+
+void cleanupConstants(VectorObjects_t* constants) {
+    uint32_t count = vectorObjectsGetCount(constants);
+    Object_t** objs = vectorObjectsGetBuffer(constants);
+    for(uint32_t i = 0; i < count; i++) {
+        gcClearRef(objs[i], GC_REF_COMPILE_CONSTANT);
+    }
+    cleanupVectorObjects(&constants, NULL);
 }
 
 void replMode() {
     char inputBuffer[4096] = "";
     Object_t** globals = callocChk(GLOBALS_SIZE * sizeof(Object_t*));
     VectorObjects_t* constants = createVectorObjects();
-    SymbolTable_t* symTable = createSymbolTable(); 
+    SymbolTable_t* symTable = allocSymbolTable();
     while (true) {
         printf("%s", PROMPT);
         if(!fgets(inputBuffer, sizeof(inputBuffer), stdin))
@@ -77,9 +102,9 @@ void replMode() {
     }
 
     cleanupSymbolTable(symTable);
-    // FIXME: cleanup does not remove allocate objects 
-    cleanupVectorObjects(&constants, NULL);
+    cleanupConstants(constants);
     free(globals);
+    gcForceRun();
 }
 
 char* readEntireFile(char* filename) {
@@ -104,13 +129,12 @@ void fileExecMode(char* filename) {
     char* input = readEntireFile(filename);
     Object_t** globals = mallocChk(GLOBALS_SIZE * sizeof(Object_t*));
     VectorObjects_t* constants = createVectorObjects();
-    SymbolTable_t* symTable = createSymbolTable();
+    SymbolTable_t* symTable = allocSymbolTable();
 
     evalInput(input, symTable, constants, globals);
     
     cleanupSymbolTable(symTable);
-    // FIXME: cleanup does not remove allocate objects 
-    cleanupVectorObjects(&constants, NULL);
+    cleanupConstants(constants);
     free(globals);
     free(input);
 }

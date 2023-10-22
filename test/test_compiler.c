@@ -40,66 +40,76 @@ void cleanupInstructions(Instructions_t instr[]);
 
 void testCompilerBasic() {
     TestCase_t testCases[] = {
-        {.input = "1 + 2",
-         .expConstants = {_INT(1), _INT(2), _END},
-         .expInstructions = {
-             codeMakeV(OP_CONSTANT, 0),
-             codeMakeV(OP_CONSTANT, 1),
-             codeMakeV(OP_ADD),
-             codeMakeV(OP_POP),
-             NULL}},
+        {
+            .input = "1 + 2",
+            .expConstants = {_INT(1), _INT(2), _END},
+            .expInstructions = { codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_ADD), codeMakeV(OP_POP), NULL }
+        },
         {
             .input = "1; 2",
             .expConstants = {_INT(1), _INT(2), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_POP), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_POP), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "1 - 2",
             .expConstants = {_INT(1), _INT(2), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_SUB), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_SUB), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "1 * 2",
             .expConstants = {_INT(1), _INT(2), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_MUL), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_MUL), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "2 / 1",
             .expConstants = {_INT(2), _INT(1), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_DIV), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_DIV), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "true",
             .expConstants = {_END},
-            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "false",
             .expConstants = {_END},
-            .expInstructions = {codeMakeV(OP_FALSE), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_FALSE), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "1 > 2",
             .expConstants = {_INT(1), _INT(2), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "1 < 2",
             .expConstants = {_INT(2), _INT(1), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_GREATER_THAN), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "1 == 2",
             .expConstants = {_INT(1), _INT(2), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "1 != 2",
             .expConstants = {_INT(1), _INT(2), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_CONSTANT, 1), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "true == false",
             .expConstants = {_END},
-            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_EQUAL), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "true != false",
             .expConstants = {_END},
-            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_TRUE), codeMakeV(OP_FALSE), codeMakeV(OP_NOT_EQUAL), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "-1",
             .expConstants = {_INT(1), _END},
-            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_MINUS), codeMakeV(OP_POP), NULL}},
+            .expInstructions = {codeMakeV(OP_CONSTANT, 0), codeMakeV(OP_MINUS), codeMakeV(OP_POP), NULL}
+        },
         {
             .input = "!true",
             .expConstants = {_END},
@@ -741,7 +751,7 @@ void runCompilerTests(TestCase_t *tc, int numTc)
         cleanupCompiler(&compiler);
         cleanupParser(&parser);
         cleanupProgram(&program);
-        gcForceRun(&program);
+        gcForceRun();
     }
 }
 
@@ -765,8 +775,7 @@ void testInstructions(SliceByte_t expected[], SliceByte_t actual)
 SliceByte_t concatInstructions(SliceByte_t expected[], int num)
 {
     SliceByte_t out = createSliceByte(0);
-    for (int i = 0; i < num; i++)
-    {
+    for (int i = 0; i < num; i++) {
         sliceByteAppend(&out, expected[i], sliceByteGetLen(expected[i]));
     }
     return out;
@@ -775,12 +784,11 @@ SliceByte_t concatInstructions(SliceByte_t expected[], int num)
 void cleanupInstructions(Instructions_t instr[]) 
 {
     int num = 0;
-    while (instr[num] != NULL)
+    while (instr[num] != NULL) {
+        cleanupSliceByte(instr[num]);
         num++;
-    for (int i = 0; i < num; i++)
-    {
-        cleanupSliceByte(instr[i]);
     }
+    
 }
 
 void testConstants(GenericExpect_t expected[], VectorObjects_t *actual)
@@ -807,6 +815,8 @@ void testConstants(GenericExpect_t expected[], VectorObjects_t *actual)
         default:
             TEST_ABORT();
         }
+
+        gcClearRef(objects[i], GC_REF_COMPILE_CONSTANT);
     }
 }
 

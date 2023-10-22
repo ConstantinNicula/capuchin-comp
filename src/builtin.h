@@ -11,7 +11,8 @@ typedef struct BuiltinFunctionDef {
 } BuiltinFunctionDef_t;
 
 
-BuiltinFn_t getBuiltinByName(const char* name); 
+BuiltinFn_t getBuiltinByName(const char* name);
+BuiltinFn_t getBuiltinByIndex(uint8_t index); 
 BuiltinFunctionDef_t* getBuiltinDefs();
 
 #endif

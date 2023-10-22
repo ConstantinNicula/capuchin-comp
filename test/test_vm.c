@@ -29,6 +29,7 @@ void testStringObject(const char* expected, Object_t *obj);
 void testNullObject(Object_t* obj);
 void testArrayObject(GenericExpect_t *al, Object_t* obj); 
 void testHashObject(GenericHash_t hl, Object_t* obj); 
+void testErrorObject(const char* expected, Object_t *obj); 
 
 void runVmTest(TestCase_t tc[], int numTestCases) {
 
@@ -79,7 +80,10 @@ void testExpectedObject(GenericExpect_t *expected, Object_t* actual) {
             break;
         case EXPECT_HASH: 
             testHashObject(expected->hl, actual);
-            break; 
+            break;
+        case EXPECT_ERROR:
+            testErrorObject(expected->el, actual); 
+            break;
         default: 
             TEST_ABORT();
     }
@@ -150,6 +154,14 @@ void testStringObject(const char* expected, Object_t *obj) {
 void testNullObject(Object_t* obj) {
     TEST_ASSERT_EQUAL_INT_MESSAGE(OBJECT_NULL, obj->type, "Object type not OBJECT_NULL");
 }
+
+void testErrorObject(const char* expected, Object_t *obj) {
+    TEST_NOT_NULL(obj, "Object is null");
+    TEST_INT(OBJECT_ERROR, obj->type, "Object type not OBJECT_ERROR");
+    Error_t *errObj = (Error_t *)obj;
+    TEST_STRING(expected, errObj->message, "Error message is not correct");
+}
+
 
 void testIntegerArithmetic() {
     TestCase_t vmTestCases[] = {
@@ -512,24 +524,27 @@ void testCallingFunctionsWithWrongArguments() {
     }
 }
 
-void testLeak() {
-    TestCase_t vmTestCases[] = {
-        {
-            " true;",
-            _BOOL(true),
-        }
-    };
 
-    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
-    runVmTest(vmTestCases, numTestCases);
-}
-
-void testLeak2() {
+void testBuiltinFunctions() {
     TestCase_t vmTestCases[] = {
-        {
-            "fn(){1;}();",
-            _INT(1),
-        }
+        {"len(\"\")", _INT(0)},
+        {"len(\"four\")", _INT(4)},
+        {"len(\"hello world\")", _INT(11)},
+        {"len(1)", _ERROR("argument to `len` not supported, got INTEGER")},
+        {"len(\"one\", \"two\")", _ERROR("wrong number of arguments. got=2, want=1")},
+        {"len([1, 2, 3])", _INT(3)},
+        {"len([])", _INT(0)},
+        {"puts(\"hello\", \"world!\")", _NIL},
+        {"first([1, 2, 3])", _INT(1)},
+        {"first([])", _NIL},
+        {"first(1)", _ERROR("argument to `first` must be ARRAY, got INTEGER")},
+        {"last([1, 2, 3])", _INT(3)},
+        {"last([])", _NIL},
+        {"last(1)", _ERROR("argument to `last` must be ARRAY, got INTEGER")},
+        {"rest([1, 2, 3])", _ARRAY(_INT(2), _INT(3), _END)},
+        {"rest([])", _NIL},
+        {"push([], 1)", _ARRAY(_INT(1), _END)},
+        {"push(1, 1)", _ERROR("argument to `push` must be ARRAY, got INTEGER")},
     };
 
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
@@ -552,5 +567,6 @@ int main(void) {
     RUN_TEST(testCallingFunctionsWithArgumentsAndLocalBindings);
     RUN_TEST(testCallingFunctionsWithWrongArguments);
     RUN_TEST(testFirstClassFunctions);
+    RUN_TEST(testBuiltinFunctions);
     return UNITY_END();
 }

@@ -497,7 +497,7 @@ void gcMarkHash(Hash_t* obj) {
 }
 
 /************************************ 
- *     BULITIN OBJECT TYPE          *
+ *     BUILTIN OBJECT TYPE          *
  ************************************/
 
 Builtin_t* createBuiltin(BuiltinFunction_t func) {

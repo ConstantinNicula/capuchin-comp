@@ -33,6 +33,12 @@ BuiltinFn_t getBuiltinByName(const char* name) {
     return NULL;
 }
 
+BuiltinFn_t getBuiltinByIndex(uint8_t index) {
+    uint8_t numBuiltins = sizeof(builtinDefs) / sizeof(builtinDefs[0]);
+    if (index >= numBuiltins) return NULL;
+    return builtinDefs[index].fn;
+}
+
 BuiltinFunctionDef_t* getBuiltinDefs() {
     return builtinDefs;
 }

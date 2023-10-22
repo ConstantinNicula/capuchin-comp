@@ -1,6 +1,8 @@
 #include "vm.h"
 #include "utils.h"
 #include "gc.h"
+#include "builtin.h"
+
 #define MAX_FRAMES 1024 
 
 static void cleanupGlobals(Vm_t *vm); 
@@ -46,11 +48,15 @@ static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index);
 static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index); 
 
 static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip);
+static VmError_t vmCallFunction(Vm_t* vm, CompiledFunction_t* fn, uint8_t numArgs); 
+static VmError_t vmCallBuiltin(Vm_t* vm,Builtin_t* builtin, uint8_t numArgs); 
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm); 
 static VmError_t vmExecuteOpReturn(Vm_t* vm); 
 
 static VmError_t vmExecuteOpSetLocal(Vm_t* vm, int32_t* ip);
 static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip);
+
+static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip);
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
@@ -269,6 +275,10 @@ VmError_t vmRun(Vm_t *vm) {
                 err = vmExecuteOpGetLocal(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
+            case OP_GET_BUILTIN:
+                err = vmExecuteOpGetBuiltin(vm, &vmCurrentFrame(vm)->ip);
+                break;
+
             default:
                 break;
         }
@@ -429,7 +439,7 @@ static Array_t* vmBuildArray(Vm_t* vm, uint16_t numElements) {
     }
 
     // remove elements from stack
-    for (uint16_t i = vm->sp-numElements; i < vm->sp; i++) {
+    for (uint16_t i = 0; i < numElements; i++) {
         vmPop(vm);
     }
 
@@ -463,6 +473,11 @@ static VmError_t vmBuildHash(Vm_t* vm, uint16_t numElements, Hash_t** hash) {
 
         HashPair_t* pair = createHashPair(key, value);
         hashInsertPair(*hash, pair);
+    }
+    
+    // cleanup stack vars 
+    for (uint16_t i = 0; i < numElements; i++) {
+        vmPop(vm);
     }
     return createVmError(VM_NO_ERROR, NULL);
 }
@@ -572,13 +587,19 @@ static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
     uint8_t numArgs = vmGetInstructions(vm)[*ip+1];
     *ip += 1;
 
-    Object_t* obj = vm->stack[vm->sp - 1 - numArgs];
-    if (obj->type != OBJECT_COMPILED_FUNCTION) {
-        return createVmError(VM_CALL_NON_FUNCTION, strFormat("calling non function object: %s", 
-            objectTypeToString(obj->type))); 
+    Object_t* callee = vm->stack[vm->sp - 1 - numArgs];
+    switch(callee->type) {
+        case OBJECT_COMPILED_FUNCTION:
+            return vmCallFunction(vm, (CompiledFunction_t*) callee, numArgs);
+        case OBJECT_BUILTIN:
+            return vmCallBuiltin(vm, (Builtin_t*)callee, numArgs);
+        default:
+            return createVmError(VM_CALL_NON_FUNCTION, strFormat("calling non function object: %s", 
+                objectTypeToString(callee->type))); 
     }
-    CompiledFunction_t* fn = (CompiledFunction_t*) obj;
+}
 
+static VmError_t vmCallFunction(Vm_t* vm, CompiledFunction_t* fn, uint8_t numArgs) {
     if (numArgs != fn->numParameters) {
         return createVmError(VM_CALL_WRONG_PARAMS, strFormat("wrong number of arguments: want=%d, got=%d", 
             fn->numParameters, numArgs));
@@ -595,6 +616,25 @@ static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
     vm->sp = newSp;
 
     return createVmError(VM_NO_ERROR, NULL);
+}
+
+static VmError_t vmCallBuiltin(Vm_t* vm,Builtin_t* builtin, uint8_t numArgs) {
+    VectorObjects_t* args = createVectorObjects();
+    for (uint16_t i = 0; i < numArgs; i++) {
+        vectorObjectsAppend(args, vm->stack[vm->sp - numArgs + i]);
+    }
+
+    Object_t* result = builtin->func(args);
+
+    // cleanup stack (flag for deletion), update stack pointer
+    uint16_t newSp =  vm->sp - numArgs - 1;
+    for (uint16_t i = newSp; i < vm->sp; i++) {
+        gcClearRef(vm->stack[i], GC_REF_STACK);
+    }
+    vm->sp = newSp;
+    cleanupVectorObjects(&args, NULL);
+
+    return vmPush(vm, result);
 }
 
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm) {
@@ -641,6 +681,15 @@ static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip) {
 
     Frame_t* frame = vmCurrentFrame(vm);
     return vmPush(vm, vm->stack[frame->basePointer + localIndex]);
+}
+
+static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint8_t builtinIndex = ins[*ip + 1];
+    *ip += 1;
+
+    Builtin_t* builtin = createBuiltin(getBuiltinByIndex(builtinIndex));
+    return vmPush(vm, (Object_t*)builtin);
 }
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {
