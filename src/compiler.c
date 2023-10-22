@@ -294,12 +294,13 @@ static CompError_t compilerCompileBlockStatement(Compiler_t* comp, BlockStatemen
 }
 
 static CompError_t compilerCompileLetStatement(Compiler_t* comp, LetStatement_t* statement) {
+    Symbol_t* symbol = symbolTableDefine(comp->symbolTable, statement->name->value);
+
     CompError_t err = compilerCompileExpression(comp, statement->value);
     if (err != COMP_NO_ERROR) {
         return err;
     }
 
-    Symbol_t* symbol = symbolTableDefine(comp->symbolTable, statement->name->value);
     if (symbol->scope == SCOPE_GLOBAL) {
         compilerEmit(comp, OP_SET_GLOBAL, (const int[]) {symbol->index});    
     } else {
