@@ -176,8 +176,7 @@ static void gcMark() {
     void* ptr = gcHandle.first;
     while (ptr) {
         GCDataHeader_t* header = getHeader(ptr);
-        if (isBitSet(header, EXTERNAL_REF_MASK) && !isBitSet(header, INTERNAL_REF_BIT)) {
-            setBit(header, INTERNAL_REF_BIT);
+        if (isBitSet(header, EXTERNAL_REF_MASK)) {
             gcMarkObject(ptr);
         }
         ptr = header->next;

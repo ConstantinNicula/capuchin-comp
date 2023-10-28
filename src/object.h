@@ -17,6 +17,7 @@ typedef enum ObjectType{
     OBJECT_NULL,
     OBJECT_RETURN_VALUE,
     OBJECT_ERROR,
+    OBJECT_CLOSURE,
     OBJECT_COMPILED_FUNCTION,
     OBJECT_STRING,
     OBJECT_BUILTIN,
@@ -151,6 +152,22 @@ CompiledFunction_t* createCompiledFunction(Instructions_t instr, uint32_t numLoc
 CompiledFunction_t* copyCompiledFunction(const CompiledFunction_t* obj);
 
 char* compiledFunctionInspect(CompiledFunction_t* obj);
+
+/************************************ 
+ *      CLOSURE OBJECT TYPE         *
+ ************************************/
+
+typedef struct Closure {
+    OBJECT_BASE_ATTRS;
+    CompiledFunction_t* fn;
+    VectorObjects_t* free;
+} Closure_t;
+
+Closure_t* createClosure(CompiledFunction_t *fn);
+Closure_t* copyClosure(const Closure_t* obj);
+
+char* closureInspect(Closure_t* obj);
+
 
 /************************************ 
  *       ARRAY OBJECT TYPE          *

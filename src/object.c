@@ -13,6 +13,7 @@ const char* tokenTypeStrings[_OBJECT_TYPE_CNT] = {
     [OBJECT_BOOLEAN]="BOOLEAN", 
     [OBJECT_STRING]="STRING",
     [OBJECT_NULL]="NULL",
+    [OBJECT_CLOSURE]="CLOSURE",
     [OBJECT_COMPILED_FUNCTION]="COMPILED_FUNCTION",
     [OBJECT_ERROR]="ERROR",
     [OBJECT_BUILTIN]="BUILTIN",
@@ -40,6 +41,7 @@ static ObjectInspectFn_t objectInsepctFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectInspectFn_t)nulllInspect,
     [OBJECT_RETURN_VALUE]=(ObjectInspectFn_t)returnValueInspect,
     [OBJECT_ERROR]=(ObjectInspectFn_t)errorInspect,
+    [OBJECT_CLOSURE]=(ObjectInspectFn_t)closureInspect,
     [OBJECT_COMPILED_FUNCTION]=(ObjectInspectFn_t)compiledFunctionInspect,
     [OBJECT_BUILTIN]=(ObjectInspectFn_t)builtinInspect,
     [OBJECT_ARRAY]=(ObjectInspectFn_t)arrayInspect,
@@ -53,6 +55,7 @@ static ObjectCopyFn_t objectCopyFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectCopyFn_t)copyNull,
     [OBJECT_RETURN_VALUE]=(ObjectCopyFn_t)copyReturnValue,
     [OBJECT_ERROR]=(ObjectCopyFn_t)copyError,
+    [OBJECT_CLOSURE]=(ObjectCopyFn_t)copyClosure,
     [OBJECT_COMPILED_FUNCTION]=(ObjectCopyFn_t)copyCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectCopyFn_t)copyBuiltin,
     [OBJECT_ARRAY]=(ObjectCopyFn_t)copyArray,
@@ -257,10 +260,7 @@ void gcCleanupReturnValue(ReturnValue_t** obj) {
 }
 
 void gcMarkReturnValue(ReturnValue_t* obj) {
-    if (!gcHasRef(obj->value, GC_REF_INTERNAL)) {
-        gcSetRef(obj->value, GC_REF_INTERNAL);
-        gcMarkObject(obj->value);
-    }
+    gcMarkObject(obj->value);
 }
 
 /************************************ 
@@ -334,6 +334,52 @@ char* compiledFunctionInspect(CompiledFunction_t* obj) {
     return strFormat("CompileFunction[%p]", obj);
 }
 
+/************************************ 
+ *      CLOSURE OBJECT TYPE         *
+ ************************************/
+
+Closure_t* createClosure(CompiledFunction_t *fn) {
+    Closure_t* obj = gcMalloc(sizeof(Closure_t));
+    *obj = (Closure_t) {
+        .type = OBJECT_CLOSURE,
+        .fn = fn,
+        .free = createVectorObjects()
+    };
+    return obj;
+}
+
+Closure_t* copyClosure(const Closure_t* obj) {
+    Closure_t* newObj = gcMalloc(sizeof(Closure_t)); 
+    *newObj = (Closure_t) {
+        .type = OBJECT_CLOSURE,
+        .fn = copyCompiledFunction(obj->fn),
+        .free = copyVectorObjects(obj->free, copyObject),
+    };
+    return newObj;    
+}
+
+void gcCleanupClosure(Closure_t** obj) {
+    if(!(*obj)) return;
+
+    gcCleanupObject((Object_t**)&(*obj)->fn);
+    cleanupVectorObjects(&(*obj)->free, gcCleanupObject); 
+
+    gcFree(*obj);
+    *obj = NULL;
+}
+void gcMarkClosure(Closure_t* obj) { 
+    gcMarkObject((Object_t*)obj->fn);
+    uint32_t freeCnt = vectorObjectsGetCount(obj->free);
+    Object_t** freeObjs = vectorObjectsGetBuffer(obj->free);
+    for (uint32_t i = 0; i < freeCnt; i++) {
+        gcMarkObject(freeObjs[i]);
+    }
+}
+
+char* closureInspect(Closure_t* obj) {
+    return strFormat("Closure[%p]", obj);
+}
+
 
 /************************************ 
  *       ARRAY OBJECT TYPE          *
@@ -393,10 +439,7 @@ void gcMarkArray(Array_t* arr) {
     uint32_t cnt = arrayGetElementCount(arr);
     Object_t** elems = arrayGetElements(arr);
     for (uint32_t i = 0; i < cnt; i++) {
-        if (!gcHasRef(elems[i], GC_REF_INTERNAL)) {
-            gcSetRef(elems[i], GC_REF_INTERNAL);
-            gcMarkObject(elems[i]);
-        }
+        gcSetRef(elems[i], GC_REF_INTERNAL);
     } 
 }
 
@@ -483,15 +526,8 @@ void gcMarkHash(Hash_t* obj) {
     HashMapEntry_t* entry = hashMapIterGetNext(obj->pairs, &iter);
     while(entry){
         HashPair_t* pair = (HashPair_t*)entry->value; 
-        if (!gcHasRef(pair->key, GC_REF_INTERNAL)) {
-            gcSetRef(pair->key, GC_REF_INTERNAL);
-            gcMarkObject(pair->key);
-        }
-        
-        if (!gcHasRef(pair->value, GC_REF_INTERNAL)) {
-            gcSetRef(pair->value, GC_REF_INTERNAL);
-            gcMarkObject(pair->value);
-        }
+        gcMarkObject(pair->key); 
+        gcMarkObject(pair->value);
         entry = hashMapIterGetNext(obj->pairs, &iter);
     }
 }
@@ -541,6 +577,7 @@ static ObjectCleanupFn_t objectCleanupFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectCleanupFn_t)gcCleanupNull,
     [OBJECT_RETURN_VALUE]=(ObjectCleanupFn_t)gcCleanupReturnValue,
     [OBJECT_ERROR]=(ObjectCleanupFn_t)gcCleanupError,
+    [OBJECT_CLOSURE]=(ObjectCleanupFn_t)gcCleanupClosure,
     [OBJECT_COMPILED_FUNCTION]=(ObjectCleanupFn_t)gcCleanupCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectCleanupFn_t)gcCleanupBuiltin,
     [OBJECT_ARRAY]=(ObjectCleanupFn_t)gcCleanupArray,
@@ -554,6 +591,7 @@ static ObjectGcMarkFn_t objectMarkFns[_OBJECT_TYPE_CNT] = {
     [OBJECT_NULL]=(ObjectGcMarkFn_t)gcMarkNull,
     [OBJECT_RETURN_VALUE]=(ObjectGcMarkFn_t)gcMarkReturnValue,
     [OBJECT_ERROR]=(ObjectGcMarkFn_t)gcMarkError,
+    [OBJECT_CLOSURE]=(ObjectGcMarkFn_t)gcMarkClosure,
     [OBJECT_COMPILED_FUNCTION]=(ObjectGcMarkFn_t)gcMarkCompiledFunction,
     [OBJECT_BUILTIN]=(ObjectGcMarkFn_t)gcMarkBuiltin,
     [OBJECT_ARRAY]=(ObjectGcMarkFn_t)gcMarkArray,
@@ -573,6 +611,8 @@ void gcCleanupObject(Object_t** obj) {
 void gcMarkObject(Object_t* obj) {
     if (obj && 0 <= obj->type && obj->type < _OBJECT_TYPE_CNT) {
         ObjectGcMarkFn_t markFn = objectMarkFns[obj->type];
-        if (markFn) markFn(obj);
+        if ( (!markFn) || (gcHasRef(obj, GC_REF_INTERNAL))) return;
+        gcSetRef(obj, GC_REF_INTERNAL);
+        markFn(obj);
     }   
 }

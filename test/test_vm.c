@@ -122,7 +122,6 @@ void testHashObject(GenericHash_t hl, Object_t* obj) {
 
         HashPair_t* pair = hashGetPair(hashObj, expKeyObject);
         TEST_NOT_NULL(pair, "no pair found!");
-
         testExpectedObject(&hl.values[i], pair->value);
         testExpectedObject(&hl.keys[i], pair->key);
         
