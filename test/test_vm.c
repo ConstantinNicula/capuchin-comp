@@ -550,6 +550,73 @@ void testBuiltinFunctions() {
     runVmTest(vmTestCases, numTestCases);
 }
 
+void testClosures() {
+    TestCase_t vmTestCases[] = {
+        {
+            "let newClosure = fn(a) {"
+            "   fn() {a; };"
+            "};"
+            "let closure = newClosure(99);"
+            "closure()",
+            _INT(99),
+        },
+        {
+            "let newAdder = fn(a, b) {"
+            "   fn(c) {a + b + c};"
+            "};"
+            "let adder = newAdder(1, 2);"
+            "adder(8)",
+            _INT(11),
+        },
+        {
+            "let newAdder = fn(a, b) {"
+            "   let c = a + b"
+            "   fn(d) {c + d};"
+            "};"
+            "let adder = newAdder(1, 2);"
+            "adder(8)",
+            _INT(11),
+        },
+        {
+            "let newAdderOuter = fn(a, b) {"
+            "   let c = a + b"
+            "   fn(d) {"
+            "       let e = d + c"
+            "          fn(f) {e + f;}"
+            "   };"
+            "};"
+            "let newAdderInner = newAdderOuter(1,2)"
+            "let adder = newAdderInner(3)"
+            "adder(8)",
+            _INT(14),
+        },
+        {
+            "let a = 1;"
+            "let newAdderOuter = fn(b) {"
+            "   fn(c) {"
+            "       fn(d) { a + b + c + d};"
+            "   };"
+            "};"
+            "let newAdderInner = newAdderOuter(2)"
+            "let adder = newAdderInner(3)"
+            "adder(8)",
+            _INT(14),
+        },
+        {
+            "let newClosure = fn(a, b) {"
+            "   let one = fn() { a; }"
+            "   let two = fn() { b; }"
+            "   fn() { one() + two(); }"
+            "};"
+            "let closure = newClosure(9, 90)"
+            "closure()",
+            _INT(99),
+        },
+   };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(testIntegerArithmetic);
@@ -567,5 +634,6 @@ int main(void) {
     RUN_TEST(testCallingFunctionsWithWrongArguments);
     RUN_TEST(testFirstClassFunctions);
     RUN_TEST(testBuiltinFunctions);
+    RUN_TEST(testClosures);
     return UNITY_END();
 }

@@ -338,12 +338,12 @@ char* compiledFunctionInspect(CompiledFunction_t* obj) {
  *      CLOSURE OBJECT TYPE         *
  ************************************/
 
-Closure_t* createClosure(CompiledFunction_t *fn) {
+Closure_t* createClosure(CompiledFunction_t *fn, VectorObjects_t* freeVars) {
     Closure_t* obj = gcMalloc(sizeof(Closure_t));
     *obj = (Closure_t) {
         .type = OBJECT_CLOSURE,
         .fn = fn,
-        .free = createVectorObjects()
+        .free = freeVars, 
     };
     return obj;
 }

@@ -58,6 +58,7 @@ static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip);
 
 static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip);
 static VmError_t vmExecuteOpClosure(Vm_t* vm, int32_t* ip);
+static VmError_t vmExecuteOpGetFree(Vm_t* vm, int32_t* ip); 
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
@@ -87,8 +88,7 @@ Vm_t createVm(Bytecode_t* bytecode) {
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
     Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
     CompiledFunction_t* mainFunction = createCompiledFunction(bytecode->instructions, 0, 0);
-    Closure_t* mainClosure = createClosure(mainFunction);
-    //gcSetRef(mainFunction, GC_REF_COMPILE_CONSTANT);
+    Closure_t* mainClosure = createClosure(mainFunction, createVectorObjects());
     gcSetRef(mainClosure, GC_REF_COMPILE_CONSTANT);
     frames[0] = createFrame(mainClosure, 0);
 
@@ -286,7 +286,9 @@ VmError_t vmRun(Vm_t *vm) {
                 err = vmExecuteOpClosure(vm, &vmCurrentFrame(vm)->ip);
                 break;
 
-
+            case OP_GET_FREE:
+                err = vmExecuteOpGetFree(vm, &vmCurrentFrame(vm)->ip); 
+                break;
             default:
                 break;
         }
@@ -703,6 +705,7 @@ static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip) {
 static VmError_t vmExecuteOpClosure(Vm_t* vm, int32_t* ip) {
     Instructions_t ins = vmGetInstructions(vm);
     uint16_t constIndex = readUint16BigEndian(&(ins[*ip + 1])); 
+    uint8_t numFree = ins[*ip + 3];
     *ip += 3;
 
     Object_t* constant = vectorObjectsGetBuffer(vm->constants)[constIndex];
@@ -710,8 +713,27 @@ static VmError_t vmExecuteOpClosure(Vm_t* vm, int32_t* ip) {
         return createVmError(VM_CALL_NON_FUNCTION, strFormat("not a function: %d", constant->type));
     }
 
-    Closure_t* closure = createClosure((CompiledFunction_t*)constant);
+    VectorObjects_t* freeVars = createVectorObjects();
+    for (uint8_t i = 0; i < numFree; i++) {
+        vectorObjectsAppend(freeVars, vm->stack[vm->sp - numFree + i]);
+    }
+
+    // cleanup stack 
+    for (uint8_t i = 0; i < numFree; i++) {
+        vmPop(vm);
+    }
+
+    Closure_t* closure = createClosure((CompiledFunction_t*)constant, freeVars);
     return vmPush(vm, (Object_t*)closure);
+}
+
+static VmError_t vmExecuteOpGetFree(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint8_t freeIndex = ins[*ip + 1];
+    *ip += 1;
+
+    Closure_t* currentClosure = vmCurrentFrame(vm)->cl;
+    return vmPush(vm, currentClosure->free->buf[freeIndex]);
 }
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {

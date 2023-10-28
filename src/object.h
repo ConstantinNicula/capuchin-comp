@@ -163,7 +163,7 @@ typedef struct Closure {
     VectorObjects_t* free;
 } Closure_t;
 
-Closure_t* createClosure(CompiledFunction_t *fn);
+Closure_t* createClosure(CompiledFunction_t *fn, VectorObjects_t* freeVars);
 Closure_t* copyClosure(const Closure_t* obj);
 
 char* closureInspect(Closure_t* obj);
