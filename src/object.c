@@ -361,8 +361,7 @@ Closure_t* copyClosure(const Closure_t* obj) {
 void gcCleanupClosure(Closure_t** obj) {
     if(!(*obj)) return;
 
-    gcCleanupObject((Object_t**)&(*obj)->fn);
-    cleanupVectorObjects(&(*obj)->free, gcCleanupObject); 
+    cleanupVectorObjects(&(*obj)->free, NULL); 
 
     gcFree(*obj);
     *obj = NULL;

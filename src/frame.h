@@ -5,12 +5,12 @@
 #include "vector.h"
 
 typedef struct Frame {
-    CompiledFunction_t* fn;
+    Closure_t* cl;
     int32_t ip;
     uint32_t basePointer;
 } Frame_t;
 
 
-Frame_t createFrame(CompiledFunction_t* fn, uint32_t basePointer);
+Frame_t createFrame(Closure_t* cl, uint32_t basePointer);
 Instructions_t frameGetInstructions(Frame_t* frame);
 #endif

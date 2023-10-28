@@ -48,7 +48,7 @@ static VmError_t vmExecuteArrayIndex(Vm_t* vm, Array_t*array, Integer_t* index);
 static VmError_t vmExecuteHashIndex(Vm_t* vm, Hash_t* hash, Object_t* index); 
 
 static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip);
-static VmError_t vmCallFunction(Vm_t* vm, CompiledFunction_t* fn, uint8_t numArgs); 
+static VmError_t vmCallClosure(Vm_t* vm, Closure_t* cl, uint8_t numArgs); 
 static VmError_t vmCallBuiltin(Vm_t* vm,Builtin_t* builtin, uint8_t numArgs); 
 static VmError_t vmExecuteOpReturnValue(Vm_t* vm); 
 static VmError_t vmExecuteOpReturn(Vm_t* vm); 
@@ -57,6 +57,7 @@ static VmError_t vmExecuteOpSetLocal(Vm_t* vm, int32_t* ip);
 static VmError_t vmExecuteOpGetLocal(Vm_t* vm, int32_t* ip);
 
 static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip);
+static VmError_t vmExecuteOpClosure(Vm_t* vm, int32_t* ip);
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
@@ -74,7 +75,6 @@ VmError_t createVmError(VmErrorCode_t code, char* str) {
 
 void cleanupVmError(VmError_t* err){ 
     if (!err && !err->str) return;
-
     free(err->str);
 }
 
@@ -87,8 +87,10 @@ Vm_t createVm(Bytecode_t* bytecode) {
 Vm_t createVmWithStore(Bytecode_t* bytecode, Object_t** s)  {
     Frame_t* frames = callocChk(MAX_FRAMES * sizeof(Frame_t));
     CompiledFunction_t* mainFunction = createCompiledFunction(bytecode->instructions, 0, 0);
-    gcSetRef(mainFunction, GC_REF_COMPILE_CONSTANT);
-    frames[0] = createFrame(mainFunction, 0);
+    Closure_t* mainClosure = createClosure(mainFunction);
+    //gcSetRef(mainFunction, GC_REF_COMPILE_CONSTANT);
+    gcSetRef(mainClosure, GC_REF_COMPILE_CONSTANT);
+    frames[0] = createFrame(mainClosure, 0);
 
     Object_t** globals = (s == NULL) ? callocChk(GLOBALS_SIZE * sizeof(Object_t*)) : s;
     return (Vm_t) {
@@ -148,7 +150,8 @@ static void cleanupStack(Vm_t *vm) {
 
 static void cleanupFrames(Vm_t* vm) {
     // first frame is created internally, so fn ref must be cleared manually.
-    gcClearRef(vm->frames[0].fn, GC_REF_COMPILE_CONSTANT); 
+    //gcClearRef(vm->frames[0].cl->fn, GC_REF_COMPILE_CONSTANT); 
+    gcClearRef(vm->frames[0].cl, GC_REF_COMPILE_CONSTANT); 
     free(vm->frames);
 }
 
@@ -182,7 +185,7 @@ Object_t* vmLastPoppedStackElem(Vm_t *vm) {
 VmError_t vmRun(Vm_t *vm) {
     VmError_t err = createVmError(VM_NO_ERROR, NULL);
     
-    while (vmCurrentFrame(vm)->ip < (int32_t)sliceByteGetLen(vmCurrentFrame(vm)->fn->instructions) - 1) {
+    while (vmCurrentFrame(vm)->ip < (int32_t)sliceByteGetLen(frameGetInstructions(vmCurrentFrame(vm))) - 1) {
         vmCurrentFrame(vm)->ip++;
 
         Instructions_t ins = vmGetInstructions(vm);
@@ -278,6 +281,11 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_GET_BUILTIN:
                 err = vmExecuteOpGetBuiltin(vm, &vmCurrentFrame(vm)->ip);
                 break;
+
+            case OP_CLOSURE:
+                err = vmExecuteOpClosure(vm, &vmCurrentFrame(vm)->ip);
+                break;
+
 
             default:
                 break;
@@ -589,8 +597,8 @@ static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
 
     Object_t* callee = vm->stack[vm->sp - 1 - numArgs];
     switch(callee->type) {
-        case OBJECT_COMPILED_FUNCTION:
-            return vmCallFunction(vm, (CompiledFunction_t*) callee, numArgs);
+        case OBJECT_CLOSURE:
+            return vmCallClosure(vm, (Closure_t*) callee, numArgs);
         case OBJECT_BUILTIN:
             return vmCallBuiltin(vm, (Builtin_t*)callee, numArgs);
         default:
@@ -599,17 +607,17 @@ static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
     }
 }
 
-static VmError_t vmCallFunction(Vm_t* vm, CompiledFunction_t* fn, uint8_t numArgs) {
-    if (numArgs != fn->numParameters) {
+static VmError_t vmCallClosure(Vm_t* vm, Closure_t* cl, uint8_t numArgs) {
+    if (numArgs != cl->fn->numParameters) {
         return createVmError(VM_CALL_WRONG_PARAMS, strFormat("wrong number of arguments: want=%d, got=%d", 
-            fn->numParameters, numArgs));
+            cl->fn->numParameters, numArgs));
     }
 
-    Frame_t frame = createFrame(fn, vm->sp - numArgs);
+    Frame_t frame = createFrame(cl, vm->sp - numArgs);
     vmPushFrame(vm, &frame);
 
     // zero out stack values and update stack pointer
-    uint16_t newSp = frame.basePointer + fn->numLocals;
+    uint16_t newSp = frame.basePointer + cl->fn->numLocals;
     for(uint16_t i = vm->sp; i < newSp; i++) {
         vm->stack[i] = NULL;
     }     
@@ -690,6 +698,20 @@ static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip) {
 
     Builtin_t* builtin = createBuiltin(getBuiltinByIndex(builtinIndex));
     return vmPush(vm, (Object_t*)builtin);
+}
+
+static VmError_t vmExecuteOpClosure(Vm_t* vm, int32_t* ip) {
+    Instructions_t ins = vmGetInstructions(vm);
+    uint16_t constIndex = readUint16BigEndian(&(ins[*ip + 1])); 
+    *ip += 3;
+
+    Object_t* constant = vectorObjectsGetBuffer(vm->constants)[constIndex];
+    if (constant->type != OBJECT_COMPILED_FUNCTION) {
+        return createVmError(VM_CALL_NON_FUNCTION, strFormat("not a function: %d", constant->type));
+    }
+
+    Closure_t* closure = createClosure((CompiledFunction_t*)constant);
+    return vmPush(vm, (Object_t*)closure);
 }
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {

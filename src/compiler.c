@@ -599,8 +599,8 @@ static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLite
     Instructions_t instr = compilerLeaveScope(comp);
      
     CompiledFunction_t* compiledFn = createCompiledFunction(instr, numLocals, numParams);
-    const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn)}; 
-    compilerEmit(comp, OP_CONSTANT, args);
+    const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn), 0}; 
+    compilerEmit(comp, OP_CLOSURE, args);
     
     return COMP_NO_ERROR;
 }

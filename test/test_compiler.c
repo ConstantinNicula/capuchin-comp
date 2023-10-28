@@ -396,7 +396,7 @@ void testFunctions() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CLOSURE, 2, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -416,7 +416,7 @@ void testFunctions() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CLOSURE, 2, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -436,7 +436,7 @@ void testFunctions() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CLOSURE, 2, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -451,7 +451,7 @@ void testFunctions() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CLOSURE, 0, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -515,7 +515,7 @@ void testFunctionCalls() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CLOSURE, 1, 0),
                 codeMakeV(OP_CALL, 0),
                 codeMakeV(OP_POP),
                 NULL
@@ -533,7 +533,7 @@ void testFunctionCalls() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CLOSURE, 1, 0),
                 codeMakeV(OP_SET_GLOBAL, 0),
                 codeMakeV(OP_GET_GLOBAL, 0), 
                 codeMakeV(OP_CALL, 0),
@@ -554,7 +554,7 @@ void testFunctionCalls() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CLOSURE, 0, 0),
                 codeMakeV(OP_SET_GLOBAL, 0),
                 codeMakeV(OP_GET_GLOBAL, 0), 
                 codeMakeV(OP_CONSTANT, 1), 
@@ -582,7 +582,7 @@ void testFunctionCalls() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CLOSURE, 0, 0),
                 codeMakeV(OP_SET_GLOBAL, 0),
                 codeMakeV(OP_GET_GLOBAL, 0), 
                 codeMakeV(OP_CONSTANT, 1), 
@@ -617,7 +617,7 @@ void testLetStatementScopes() {
             .expInstructions = {
                 codeMakeV(OP_CONSTANT, 0),
                 codeMakeV(OP_SET_GLOBAL, 0),
-                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CLOSURE, 1, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -639,7 +639,7 @@ void testLetStatementScopes() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 1),
+                codeMakeV(OP_CLOSURE, 1, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -667,7 +667,7 @@ void testLetStatementScopes() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CLOSURE, 2, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
@@ -711,7 +711,7 @@ void testBuiltins() {
                 _END
             },
             .expInstructions = {
-                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_CLOSURE, 0, 0),
                 codeMakeV(OP_POP),
                 NULL
             }
