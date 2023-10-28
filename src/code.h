@@ -44,6 +44,8 @@ typedef enum OpCode {
     OP_GET_BUILTIN, 
     OP_CLOSURE, 
 
+    OP_GET_FREE,
+
     OP_POP,
     _OP_COUNT,
 } OpCode_t;

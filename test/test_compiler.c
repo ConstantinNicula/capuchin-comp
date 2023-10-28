@@ -724,6 +724,141 @@ void testBuiltins() {
 
 }
 
+void testClosures() {
+
+    TestCase_t testCases[] = {
+        {
+            .input = "fn(a) {"
+                     "  fn(b) {"
+                     "      a + b"
+                     "  }"
+                     "}",
+            .expConstants = {
+                _FUNC(
+                    codeMakeV(OP_GET_FREE, 0),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _FUNC(
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CLOSURE, 0, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CLOSURE, 1, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "fn(a) {"
+                     "  fn(b) {"
+                     "      fn(c) {"
+                     "      a + b + c"
+                     "      }"
+                     "  }"
+                     "}",
+            .expConstants = {
+                _FUNC(
+                    codeMakeV(OP_GET_FREE, 0),
+                    codeMakeV(OP_GET_FREE, 1),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _FUNC(
+                    codeMakeV(OP_GET_FREE, 0),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CLOSURE, 0, 2),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _FUNC(
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CLOSURE, 1, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CLOSURE, 2, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "let global = 55;"
+                     "fn () {"
+                     "  let a = 66;"
+                     "  fn() {"
+                     "      let b = 77;"
+                     "      fn() {"
+                     "          let c = 88;"
+                     "          global + a + b + c;"
+                     "      }"
+                     "  }"
+                     "}",
+            .expConstants = {
+                _INT(55),
+                _INT(66),
+                _INT(77),
+                _INT(88),
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 3),
+                    codeMakeV(OP_SET_LOCAL, 0),
+                    codeMakeV(OP_GET_GLOBAL, 0),
+                    codeMakeV(OP_GET_FREE, 0),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_GET_FREE, 1),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_ADD),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 2),
+                    codeMakeV(OP_SET_LOCAL, 0),
+                    codeMakeV(OP_GET_FREE, 0),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CLOSURE, 4, 2),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _FUNC(
+                    codeMakeV(OP_CONSTANT, 1),
+                    codeMakeV(OP_SET_LOCAL, 0),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CLOSURE, 5, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CONSTANT, 0),
+                codeMakeV(OP_SET_GLOBAL, 0), 
+                codeMakeV(OP_CLOSURE, 6, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+   };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+
+}
+
+
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
     for (int i = 0; i < numTc; i++)
@@ -863,5 +998,6 @@ int main(void)
     RUN_TEST(testFunctionCalls);
     RUN_TEST(testLetStatementScopes);
     RUN_TEST(testBuiltins);
+    RUN_TEST(testClosures);
     return UNITY_END();
 }

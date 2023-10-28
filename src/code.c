@@ -46,7 +46,7 @@ static OpDefinition_t definitions[_OP_COUNT] = {
 
     [OP_GET_BUILTIN] = {"OpGetBuiltin", .argCount=1, .argWidths={1}},
     [OP_CLOSURE] = {"OpClosure", .argCount=2, .argWidths={2, 1}},
-
+    [OP_GET_FREE] = {"OpGetFree", .argCount=1, .argWidths={1}},
     [OP_POP] = {"OpPop", .argCount=0, .argWidths={0}},
 };
 

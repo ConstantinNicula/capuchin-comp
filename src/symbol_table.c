@@ -1,8 +1,13 @@
 #include "symbol_table.h"
 #include "utils.h"
 
+IMPL_VECTOR_TYPE(Symbol, Symbol_t*);
+
 const char* symbolScopeStr[_NUM_SYMBOL_SCOPES] = {
    [SCOPE_GLOBAL] = "SCOPE_GLOBAL", 
+   [SCOPE_LOCAL] = "SCOPE_LOCAL", 
+   [SCOPE_FREE] = "SCOPE_FREE", 
+   [SCOPE_BUILTIN] = "SCOPE_BUILTIN", 
 };
 const char* symbolScopeToString(SymbolScope_t scope) {
     if (scope < 0 || scope >= _NUM_SYMBOL_SCOPES)
@@ -22,6 +27,7 @@ Symbol_t* createSymbol(const char* name, SymbolScope_t scope, uint32_t index) {
 
 void cleanupSymbol(Symbol_t** sym) {
     if ((*sym) == NULL) return;
+
     free((*sym)->name);
     free((*sym));
     *sym = NULL;
@@ -36,7 +42,8 @@ SymbolTable_t* createEnclosedSymbolTable(SymbolTable_t* outer) {
     *symTable = (SymbolTable_t) {
         .outer = outer,
         .store = createHashMap(),
-        .numDefinitions = 0
+        .numDefinitions = 0,
+        .freeSymbols = createVectorSymbol(), 
     };
     return symTable;
 }
@@ -44,9 +51,9 @@ SymbolTable_t* createEnclosedSymbolTable(SymbolTable_t* outer) {
 void cleanupSymbolTable(SymbolTable_t* symTable) {
     if (symTable == NULL) return;
     cleanupHashMap(&(symTable->store), (HashMapElemCleanupFn_t) cleanupSymbol);
+    cleanupVectorSymbol(&(symTable->freeSymbols), NULL); // ref other definitions
     free(symTable);
 }
-
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name) {
     Symbol_t* sym = NULL;
@@ -67,12 +74,27 @@ Symbol_t* symbolTableDefineBuiltin(SymbolTable_t* symTable, uint32_t index, cons
     return sym;
 }
 
+Symbol_t* symbolTableDefineFree(SymbolTable_t* symTable, Symbol_t* original) {
+    vectorSymbolAppend(symTable->freeSymbols, original);
 
+    Symbol_t* symbol = createSymbol(original->name, SCOPE_FREE, 
+                          vectorSymbolGetCount(symTable->freeSymbols)-1);
+
+    hashMapInsert(symTable->store, original->name, symbol);
+    return symbol;
+}
 
 Symbol_t* symbolTableResolve(SymbolTable_t* symTable, const char* name) {
     Symbol_t* sym = hashMapGet(symTable->store, name);
     if (!sym && symTable->outer) {
-        return symbolTableResolve(symTable->outer, name);
+        sym = symbolTableResolve(symTable->outer, name);
+        
+        if (!sym) return NULL;
+        if (sym->scope == SCOPE_GLOBAL || sym->scope == SCOPE_BUILTIN) {
+            return sym;
+        }
+
+        return symbolTableDefineFree(symTable, sym);
     }
     return sym;
 }

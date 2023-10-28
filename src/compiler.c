@@ -150,6 +150,9 @@ static void compilerLoadSymbol(Compiler_t* comp, Symbol_t* sym) {
         case SCOPE_BUILTIN:
             compilerEmit(comp, OP_GET_BUILTIN, (const int[]) {sym->index}); 
             break;
+        case SCOPE_FREE:
+            compilerEmit(comp, OP_GET_FREE, (const int[]) {sym->index}); 
+            break;
         default:
             break;
     }
@@ -595,11 +598,18 @@ static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLite
         compilerEmit(comp, OP_RETURN, NULL);
     }
 
+    VectorSymbol_t* freeSymbols = copyVectorSymbol(comp->symbolTable->freeSymbols, NULL);    
     uint32_t numLocals = comp->symbolTable->numDefinitions; 
     Instructions_t instr = compilerLeaveScope(comp);
-     
+
+    uint32_t numFreeSymbols = vectorSymbolGetCount(freeSymbols);
+    for (uint32_t i = 0; i < numFreeSymbols; i++) {
+        compilerLoadSymbol(comp, freeSymbols->buf[i]);
+    }
+    cleanupVectorSymbol(&freeSymbols, NULL);
+
     CompiledFunction_t* compiledFn = createCompiledFunction(instr, numLocals, numParams);
-    const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn), 0}; 
+    const int args[] = {compilerAddConstant(comp, (Object_t*) compiledFn), numFreeSymbols}; 
     compilerEmit(comp, OP_CLOSURE, args);
     
     return COMP_NO_ERROR;

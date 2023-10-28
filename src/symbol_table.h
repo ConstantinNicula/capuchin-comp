@@ -1,12 +1,14 @@
 #ifndef _SYMBOL_TABLE_H_
 #define _SYMBOL_TABLE_H_
 #include "hmap.h"
+#include "vector.h"
 #include <stdint.h>
 
 typedef enum SymbolScope {
     SCOPE_GLOBAL,
     SCOPE_LOCAL,
     SCOPE_BUILTIN,
+    SCOPE_FREE,
     _NUM_SYMBOL_SCOPES
 } SymbolScope_t;
 
@@ -21,10 +23,15 @@ typedef struct Symbol {
 Symbol_t* createSymbol(const char* name, SymbolScope_t scope, uint32_t index);
 void cleanupSymbol(Symbol_t** sym);
 
+
+
+DEFINE_VECTOR_TYPE(Symbol, Symbol_t*);
+
 typedef struct SymbolTable {
     struct SymbolTable* outer; 
     HashMap_t* store;
-    uint32_t numDefinitions; 
+    uint32_t numDefinitions;
+    VectorSymbol_t* freeSymbols; 
 } SymbolTable_t;
 
 SymbolTable_t* createSymbolTable();
