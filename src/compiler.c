@@ -153,6 +153,9 @@ static void compilerLoadSymbol(Compiler_t* comp, Symbol_t* sym) {
         case SCOPE_FREE:
             compilerEmit(comp, OP_GET_FREE, (const int[]) {sym->index}); 
             break;
+        case SCOPE_FUNCTION:
+            compilerEmit(comp, OP_CURRENT_CLOSURE, NULL); 
+            break;
         default:
             break;
     }
@@ -578,6 +581,10 @@ static CompError_t compilerCompileIndexExpression(Compiler_t* comp, IndexExpress
 
 static CompError_t compilerCompileFunctionLiteral(Compiler_t* comp, FunctionLiteral_t* func) {
     compilerEnterScope(comp);
+
+    if (func->name) {
+        symbolTableDefineFunctionName(comp->symbolTable, func->name);
+    }
 
     uint32_t numParams = functionLiteralGetParameterCount(func);
     Identifier_t** params = functionLiteralGetParameters(func);

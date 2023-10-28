@@ -741,6 +741,28 @@ void parserTestParsingIndexExpressions() {
 
 } 
 
+void parserTestFunctionLiteralWithName() {
+    const char* input = "let myFunction = fn() {};";
+    
+    Lexer_t* lexer = createLexer(input);
+    Parser_t* parser = createParser(lexer);
+    Program_t* prog = parserParseProgram(parser);
+    checkParserErrors(parser);
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, programGetStatementCount(prog), "Not enough statements in program");
+    Statement_t* stmt = programGetStatements(prog)[0];
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(STATEMENT_LET, stmt->type, "Statement is not Expression Statement");
+    LetStatement_t* letStmt = (LetStatement_t*)stmt;
+
+    TEST_ASSERT_EQUAL_INT_MESSAGE(EXPRESSION_FUNCTION_LITERAL, letStmt->value->type, "Expression type not EXPRESSION_FUNCTION_LITERAL");
+    FunctionLiteral_t* funcLit = (FunctionLiteral_t*)letStmt->value;
+
+    TEST_ASSERT_EQUAL_STRING_MESSAGE("myFunction", funcLit->name, "Wrong function literal name");
+    cleanupParser(&parser);
+    cleanupProgram(&prog);
+} 
+
 void testLetStatement(Statement_t* s, const char* name) {
     TEST_ASSERT_EQUAL_STRING_MESSAGE("let", statementTokenLiteral(s), "Check statement literal!");
     
@@ -847,5 +869,6 @@ int main(void) {
     RUN_TEST(parserTestParsingHashLiteralsWithExpressions);
     RUN_TEST(parserTestParsingHashLiteralsBooleanKeys);
     RUN_TEST(parserTestParsingHashLiteralsIntegerKeys);
+    RUN_TEST(parserTestFunctionLiteralWithName);
     return UNITY_END();
 }

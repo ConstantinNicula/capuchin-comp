@@ -9,6 +9,7 @@ typedef enum SymbolScope {
     SCOPE_LOCAL,
     SCOPE_BUILTIN,
     SCOPE_FREE,
+    SCOPE_FUNCTION,
     _NUM_SYMBOL_SCOPES
 } SymbolScope_t;
 
@@ -40,6 +41,7 @@ void cleanupSymbolTable(SymbolTable_t* symTable);
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name);
 Symbol_t* symbolTableDefineBuiltin(SymbolTable_t* symTable, uint32_t index, const char* name);
+Symbol_t* symbolTableDefineFunctionName(SymbolTable_t* symTable, const char* name);
 Symbol_t* symbolTableResolve(SymbolTable_t* symTable, const char* name);
 
 #endif

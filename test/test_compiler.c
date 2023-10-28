@@ -858,6 +858,79 @@ void testClosures() {
 
 }
 
+void testRecursiveFunctions() {
+    TestCase_t testCases[] = {
+        {
+            .input = "let countDown = fn(x) { countDown(x - 1); };"
+                     "countDown(1);",
+            .expConstants = {
+                _INT(1),
+                _FUNC(
+                    codeMakeV(OP_CURRENT_CLOSURE),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_SUB),
+                    codeMakeV(OP_CALL, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _INT(1), 
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CLOSURE, 1, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0),
+                codeMakeV(OP_CONSTANT, 2),
+                codeMakeV(OP_CALL, 1),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+        {
+            .input = "let wrapper = fn() {"
+                     "  let countDown = fn(x) {countDown(x - 1)}"
+                     "  countDown(1);"
+                     "};"
+                     "wrapper();",
+            .expConstants = {
+                _INT(1),
+                _FUNC(
+                    codeMakeV(OP_CURRENT_CLOSURE),
+                    codeMakeV(OP_GET_LOCAL, 0),
+                    codeMakeV(OP_CONSTANT, 0),
+                    codeMakeV(OP_SUB),
+                    codeMakeV(OP_CALL, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                    NULL
+                ),
+                _INT(1), 
+                _FUNC(
+                    codeMakeV(OP_CLOSURE, 1, 0),
+                    codeMakeV(OP_SET_LOCAL, 0),
+                    codeMakeV(OP_GET_LOCAL, 0), 
+                    codeMakeV(OP_CONSTANT, 2),
+                    codeMakeV(OP_CALL, 1),
+                    codeMakeV(OP_RETURN_VALUE),
+                ),
+                _END
+            },
+            .expInstructions = {
+                codeMakeV(OP_CLOSURE, 3, 0),
+                codeMakeV(OP_SET_GLOBAL, 0),
+                codeMakeV(OP_GET_GLOBAL, 0),
+                codeMakeV(OP_CALL, 0),
+                codeMakeV(OP_POP),
+                NULL
+            }
+        },
+   };
+
+    int numTestCases = sizeof(testCases) / sizeof(testCases[0]);
+    runCompilerTests(testCases, numTestCases);
+
+}
+
 
 void runCompilerTests(TestCase_t *tc, int numTc)
 {
@@ -999,5 +1072,6 @@ int main(void)
     RUN_TEST(testLetStatementScopes);
     RUN_TEST(testBuiltins);
     RUN_TEST(testClosures);
+    RUN_TEST(testRecursiveFunctions);
     return UNITY_END();
 }

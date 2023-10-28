@@ -590,7 +590,8 @@ FunctionLiteral_t* createFunctionLiteral(const Token_t* tok) {
         .type = EXPRESSION_FUNCTION_LITERAL, 
         .token = copyToken(tok),
         .parameters = createVectorExpressions(),
-        .body = NULL
+        .body = NULL,
+        .name = NULL,
     };
 
     return exp;
@@ -602,7 +603,8 @@ FunctionLiteral_t* copyFunctionLiteral(const FunctionLiteral_t* exp) {
         .type = EXPRESSION_FUNCTION_LITERAL, 
         .token = copyToken(exp->token),
         .parameters = copyVectorExpressions(exp->parameters, copyExpression),
-        .body = copyBlockStatement(exp->body)
+        .body = copyBlockStatement(exp->body),
+        .name = cloneString(exp->name),
     };
 
     return newExp;
@@ -614,6 +616,9 @@ void cleanupFunctionLiteral(FunctionLiteral_t** exp) {
     cleanupToken(&(*exp)->token);
     cleanupVectorExpressions(&(*exp)->parameters, cleanupExpression);
     cleanupBlockStatement(&(*exp)->body);
+
+    if ((*exp)->name) 
+        free((*exp)->name);
 
     free(*exp);
     *exp = NULL;

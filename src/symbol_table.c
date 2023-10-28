@@ -8,6 +8,7 @@ const char* symbolScopeStr[_NUM_SYMBOL_SCOPES] = {
    [SCOPE_LOCAL] = "SCOPE_LOCAL", 
    [SCOPE_FREE] = "SCOPE_FREE", 
    [SCOPE_BUILTIN] = "SCOPE_BUILTIN", 
+   [SCOPE_FUNCTION] = "SCOPE_FUNCTION", 
 };
 const char* symbolScopeToString(SymbolScope_t scope) {
     if (scope < 0 || scope >= _NUM_SYMBOL_SCOPES)
@@ -53,6 +54,12 @@ void cleanupSymbolTable(SymbolTable_t* symTable) {
     cleanupHashMap(&(symTable->store), (HashMapElemCleanupFn_t) cleanupSymbol);
     cleanupVectorSymbol(&(symTable->freeSymbols), NULL); // ref other definitions
     free(symTable);
+}
+
+Symbol_t* symbolTableDefineFunctionName(SymbolTable_t* symTable, const char* name) {
+    Symbol_t* sym = createSymbol(name, SCOPE_FUNCTION, 0);
+    hashMapInsert(symTable->store, name, sym);
+    return sym;
 }
 
 Symbol_t* symbolTableDefine(SymbolTable_t* symTable, const char* name) {

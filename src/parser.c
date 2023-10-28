@@ -183,6 +183,11 @@ static Statement_t* parserParseLetStatement(Parser_t* parser) {
 
     stmt->value = parserParseExpression(parser, PREC_LOWEST);
 
+    if (stmt->value->type == EXPRESSION_FUNCTION_LITERAL) {
+       FunctionLiteral_t* fl = (FunctionLiteral_t*) stmt->value;
+       fl->name = cloneString(stmt->name->value); 
+    }
+
     if (parserPeekTokenIs(parser, TOKEN_SEMICOLON))
     {
         parserNextToken(parser);

@@ -60,6 +60,8 @@ static VmError_t vmExecuteOpGetBuiltin(Vm_t* vm, int32_t* ip);
 static VmError_t vmExecuteOpClosure(Vm_t* vm, int32_t* ip);
 static VmError_t vmExecuteOpGetFree(Vm_t* vm, int32_t* ip); 
 
+static VmError_t vmExecuteOpCurrentClosure(Vm_t* vm);
+
 static VmError_t vmPush(Vm_t* vm, Object_t* obj); 
 static Object_t* vmPop(Vm_t* vm);
 
@@ -289,6 +291,11 @@ VmError_t vmRun(Vm_t *vm) {
             case OP_GET_FREE:
                 err = vmExecuteOpGetFree(vm, &vmCurrentFrame(vm)->ip); 
                 break;
+            
+            case OP_CURRENT_CLOSURE:
+                err = vmExecuteOpCurrentClosure(vm);
+                break;
+
             default:
                 break;
         }
@@ -739,6 +746,11 @@ static VmError_t vmExecuteOpGetFree(Vm_t* vm, int32_t* ip) {
 
     Closure_t* currentClosure = vmCurrentFrame(vm)->cl;
     return vmPush(vm, currentClosure->free->buf[freeIndex]);
+}
+
+static VmError_t vmExecuteOpCurrentClosure(Vm_t* vm) {
+    Closure_t* currentClosure = vmCurrentFrame(vm)->cl;
+    return vmPush(vm, (Object_t*)currentClosure);
 }
 
 static VmError_t vmPush(Vm_t* vm, Object_t* obj) {

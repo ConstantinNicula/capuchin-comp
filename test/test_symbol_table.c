@@ -297,7 +297,30 @@ void testResolveUnresolvableFree() {
     cleanupSymbolTable(global);
 }
 
+void testDefineAndResolveFunctionName() {
+    SymbolTable_t* global = createSymbolTable();
+    symbolTableDefineFunctionName(global, "a");
 
+    Symbol_t expected = {.name ="a", .scope=SCOPE_FUNCTION, .index=0};
+    Symbol_t* result = symbolTableResolve(global, expected.name);
+    TEST_ASSERT_MESSAGE(result, "function name could not be resolved");
+
+    compareSymbol(&expected, result);
+    cleanupSymbolTable(global);
+}
+
+void testShadowingFunctionName() {
+    SymbolTable_t* global = createSymbolTable();
+    symbolTableDefineFunctionName(global, "a");
+    symbolTableDefine(global, "a");
+
+    Symbol_t expected = {.name ="a", .scope=SCOPE_GLOBAL, .index=0};
+    Symbol_t* result = symbolTableResolve(global, expected.name);
+    TEST_ASSERT_MESSAGE(result, "function name could not be resolved");
+
+    compareSymbol(&expected, result);
+    cleanupSymbolTable(global);
+}
 
 bool compareSymbol(Symbol_t* exp, Symbol_t* actual) {
     TEST_NOT_NULL(actual, "Symbol is null, could not be resolved!");
@@ -318,5 +341,7 @@ int main(void) {
    RUN_TEST(testDefineResolveBuiltin);
    RUN_TEST(testResolveFree);
    RUN_TEST(testResolveUnresolvableFree);
+   RUN_TEST(testDefineAndResolveFunctionName);
+   RUN_TEST(testShadowingFunctionName);
    return UNITY_END();
 }

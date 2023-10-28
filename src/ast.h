@@ -245,6 +245,7 @@ typedef struct FunctionLiteral
     Token_t *token;
     VectorExpressions_t *parameters;
     BlockStatement_t *body;
+    char* name;
 } FunctionLiteral_t;
 
 FunctionLiteral_t *createFunctionLiteral(const Token_t *tok);
