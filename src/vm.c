@@ -598,6 +598,11 @@ static VmError_t vmExecuteOpCall(Vm_t* vm, int32_t* ip) {
     *ip += 1;
 
     Object_t* callee = vm->stack[vm->sp - 1 - numArgs];
+
+    if (!callee) {
+        return createVmError(VM_CALL_NON_FUNCTION, strFormat("calling non function object: NULL")); 
+    }
+
     switch(callee->type) {
         case OBJECT_CLOSURE:
             return vmCallClosure(vm, (Closure_t*) callee, numArgs);

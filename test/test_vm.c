@@ -617,6 +617,53 @@ void testClosures() {
     int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
     runVmTest(vmTestCases, numTestCases);
 }
+
+void testRecursiveFunctions() {
+    TestCase_t vmTestCases[] = {
+        {
+            "let countDown = fn(x) {"
+            "   if (x == 0) {"
+            "       return 0;"
+            "   } else {"
+            "       return countDown(x - 1);"
+            "   }"
+            "};"
+            "countDown(1)",
+            _INT(0),
+        },
+        {
+            "let countDown = fn(x) {"
+            "   if (x == 0) {"
+            "       return 0;"
+            "   } else {"
+            "       return countDown(x - 1);"
+            "   }"
+            "};"
+            "let wrapper = fn() {"
+            "   countDown(1);"
+            "};"
+            "wrapper()",
+            _INT(0),
+        },
+        {
+            "let wrapper = fn() {"
+            "   let countDown = fn(x) {"
+            "       if (x == 0) {"
+            "           return 0;"
+            "       } else {"
+            "           return countDown(x - 1)"
+            "       }"
+            "  }"
+            "  countDown(1);"
+            "};"
+            "wrapper();",
+            _INT(0)
+        } 
+   };
+
+    int numTestCases = sizeof(vmTestCases) / sizeof(vmTestCases[0]);
+    runVmTest(vmTestCases, numTestCases);
+}
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(testIntegerArithmetic);
@@ -635,5 +682,6 @@ int main(void) {
     RUN_TEST(testFirstClassFunctions);
     RUN_TEST(testBuiltinFunctions);
     RUN_TEST(testClosures);
+    RUN_TEST(testRecursiveFunctions);
     return UNITY_END();
 }
