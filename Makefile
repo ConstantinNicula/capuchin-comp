@@ -27,10 +27,9 @@ SRCT = $(wildcard $(PATHT)*.c)
 
 ### TOOLCHAIN SETUP ###
 COMPILE=gcc -c
-LINK=gcc
+LINK=gcc 
 DEPEND=gcc -MM -MG -MF
-CFLAGS=-I. -I$(PATHU) -I$(PATHS) -DTEST -Wall -g3 -std=c99
-
+CFLAGS=-I. -I$(PATHU) -I$(PATHS) -DTEST -Wall -g3 -std=c99 -O3
 RESULTS = $(patsubst $(PATHT)test_%.c, $(PATHR)test_%.txt, $(SRCT))
 
 

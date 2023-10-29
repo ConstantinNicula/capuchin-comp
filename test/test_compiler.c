@@ -912,6 +912,7 @@ void testRecursiveFunctions() {
                     codeMakeV(OP_CONSTANT, 2),
                     codeMakeV(OP_CALL, 1),
                     codeMakeV(OP_RETURN_VALUE),
+                    NULL
                 ),
                 _END
             },

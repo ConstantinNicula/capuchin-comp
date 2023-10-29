@@ -304,7 +304,7 @@ VmError_t vmRun(Vm_t *vm) {
             break;
         }
 
-        gcForceRun();
+        //gcForceRun();
     }
     return err;
 }
